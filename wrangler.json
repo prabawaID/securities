@@ -10,11 +10,10 @@
       "database_name": "treasury_direct"
     }
   ],
-  "ai": [
-    {
-      "binding": "AI"
-    }
-  ],
+  "ai": {
+    "binding": "AI",
+    "remote": true
+  },
   "observability": {
     "enabled": true
   }
