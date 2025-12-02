@@ -1,0 +1,16 @@
+{
+  "compatibility_date": "2025-10-08",
+  "main": "src/index.ts",
+  "name": "securities",
+  "upload_source_maps": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_id": "e4e889e0-ff7b-464c-a677-a1c60bd15841",
+      "database_name": "treasury_direct"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
