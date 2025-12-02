@@ -1,6 +1,6 @@
 {
   "compatibility_date": "2025-10-08",
-  "main": "src/chatbot.js",
+  "main": "src/chat.js",
   "name": "securities",
   "upload_source_maps": true,
   "d1_databases": [
