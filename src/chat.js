@@ -156,7 +156,7 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
 
     // Get all issues for this CUSIP
     const { results: issues } = await env.DB.prepare(
-      'SELECT * FROM security_issues WHERE cusip = ? ORDER BY issue_date DESC'
+      'SELECT * FROM security_issues WHERE cusip = ? ORDER BY issuedate DESC'
     ).bind(cusip).all();
 
     // Determine which issue to use
@@ -184,11 +184,11 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
       cusip,
       issue_count: issues.length,
       issue_summary: issues.map(i => ({
-        issue_date: i.issue_date,
-        auction_date: i.auction_date,
+        issue_date: i.issuedate,
+        auction_date: i.auctiondate,
         reopening: i.reopening,
-        total_accepted: i.total_accepted,
-        bid_to_cover_ratio: i.bid_to_cover_ratio
+        total_accepted: i.totalaccepted,
+        bid_to_cover_ratio: i.bidtocoverratio
       })),
       selected_issue: {
         issue_date: selectedIssue?.issue_date,
@@ -232,8 +232,8 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
 }
 
 function calculatePricing(security, issue, settlementDate) {
-  const couponRate = parseFloat(security.coupon_rate || issue?.interest_rate || 0);
-  const cleanPrice = parseFloat(security.price_2 || issue?.price_per_100 || 0);
+  const couponRate = parseFloat(security.rate || issue?.interest_rate || 0);
+  const cleanPrice = parseFloat(security.sell || issue?.priceper100 || 0);
   
   // For bills (zero coupon)
   if (security.security_type === 'MARKET BASED BILL' || couponRate === 0) {
@@ -249,10 +249,10 @@ function calculatePricing(security, issue, settlementDate) {
     };
   }
 
-  const frequency = getPaymentFrequency(issue?.interest_payment_frequency);
+  const frequency = getPaymentFrequency(issue?.interestpaymentfrequency);
   const maturityDate = parseDate(security.maturity_date || issue?.maturity_date);
-  const firstCouponDate = issue?.first_interest_payment_date 
-    ? parseDate(issue.first_interest_payment_date)
+  const firstCouponDate = issue?.firstinterestpaymentdate 
+    ? parseDate(issue.firstinterestpaymentdate)
     : null;
 
   const couponDates = generateCouponDates(maturityDate, firstCouponDate, frequency, settlementDate);
