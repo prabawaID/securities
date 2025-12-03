@@ -519,8 +519,8 @@ function getChatbotHTML() {
             <div class="examples">
                 <h4>Try asking:</h4>
                 <ul>
-                    <li onclick="sendMessage('Analyze CUSIP 912797QR1')">📊 "Analyze CUSIP 912797QR1"</li>
-                    <li onclick="sendMessage('Show all issues for 912797QR1')">📈 "Show all issues for 912797QR1"</li>
+                    <li onclick="sendMessage('Analyze CUSIP 91282CGH8')">📊 "Analyze CUSIP 91282CGH8"</li>
+                    <li onclick="sendMessage('Show all issues for 91282CGH8')">📈 "Show all issues for 91282CGH8"</li>
                     <li onclick="sendMessage('Compare original vs latest issue for 912797QR1')">🔄 "Compare original vs latest issue for 912797QR1"</li>
                 </ul>
             </div>
