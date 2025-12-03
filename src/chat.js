@@ -39,7 +39,7 @@ async function handleChat(request, env) {
       { role: 'user', content: message }
     ];
 
-    const response = await env.AI.run('@cf/openai/gpt-oss-20b', {
+    const response = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
       messages,
       tools: [getCusipAnalysisTool()],
     });
@@ -69,7 +69,7 @@ async function handleChat(request, env) {
           }
         ];
 
-        const finalResponse = await env.AI.run('@cf/openai/gpt-oss-20b', {
+        const finalResponse = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
           messages: finalMessages
         });
 
