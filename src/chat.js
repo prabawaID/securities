@@ -286,7 +286,7 @@ function validateCUSIP(cusip) {
 
 function calculatePricing(price, issue, settlementDate) {
     const couponRate = parseFloat(price.rate || issue?.interestRate || 0);
-    const cleanPrice = parseFloat(price.sell || issue?.pricePer100 || 0);
+    const cleanPrice = parseFloat(issue?.pricePer100 || price.buy || 0);
 
     // For bills (zero coupon)
     if (price.security_type === 'MARKET BASED BILL' || couponRate === 0) {
