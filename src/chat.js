@@ -90,7 +90,7 @@ async function handleChat(request, env) {
     } catch (error) {
         return Response.json({
             error: error.message,
-            ...(env.ENVIRONMENT === 'development' && { stack: error.stack })
+            stack: error.stack
         }, {
             status: 500,
             headers: { 'Access-Control-Allow-Origin': '*' }
@@ -277,7 +277,7 @@ function validateCUSIP(cusip) {
     // First 6 can be letters or digits
     // Next 2 must be digits
     // Last 1 is check digit
-    const pattern = /^[0-9]{5}[0-9A-Z]{3}[0-9]$/;
+    const pattern = /^[0-9A-Z]{6}[0-9]{2}[0-9]$/;
     if (!pattern.test(cusip)) {
         return { valid: false, error: 'Invalid CUSIP format' };
     }
@@ -343,102 +343,30 @@ function calculatePricing(price, issue, settlementDate) {
 }
 
 function generateCouponDates(maturityDate, firstCouponDate, frequency, settlementDate) {
-    /**
-     * Generate coupon dates for a Treasury security
-     * CORRECTED VERSION: Properly uses firstCouponDate parameter
-     * 
-     * @param {Date} maturityDate - Maturity date of the security
-     * @param {Date|null} firstCouponDate - First interest payment date (important for irregular periods)
-     * @param {number} frequency - Coupon frequency (1=annual, 2=semi-annual, 4=quarterly)
-     * @param {Date} settlementDate - Settlement date for the calculation
-     * @returns {Object} Object with lastCoupon, nextCoupon, and allCouponDates
-     */
-    
     if (!maturityDate || !(maturityDate instanceof Date)) {
         throw new Error('Invalid maturity date');
     }
 
     const monthsPerPeriod = 12 / frequency;
-    const couponDates = [];
-    
-    // STRATEGY: Use firstCouponDate as anchor if available (handles irregular first periods)
-    // Otherwise, fall back to calculating backwards from maturity
-    
-    if (firstCouponDate && firstCouponDate instanceof Date && !isNaN(firstCouponDate.getTime())) {
-        // CASE 1: We have a valid first coupon date - use it as the anchor
-        // This properly handles irregular first periods (short or long)
-        
-        let currentDate = new Date(firstCouponDate);
-        
-        // Build forward from first coupon to maturity
-        while (currentDate <= maturityDate) {
-            couponDates.push(new Date(currentDate));
-            
-            // Check if we've reached maturity
-            if (currentDate.getTime() === maturityDate.getTime()) {
-                break;
-            }
-            
-            currentDate = addMonths(currentDate, monthsPerPeriod);
-            
-            // Safety check to prevent infinite loop
-            if (couponDates.length > 300) {
-                throw new Error('Too many coupon periods - check security data');
-            }
-        }
-        
-        // Ensure maturity date is in the list
-        if (couponDates[couponDates.length - 1].getTime() !== maturityDate.getTime()) {
-            couponDates.push(new Date(maturityDate));
-        }
-        
-        // If settlement is before the first coupon, we need to go backwards
-        // This handles the dated date period (from dated date to first coupon)
-        if (couponDates.length > 0 && settlementDate < couponDates[0]) {
-            // Calculate the quasi-coupon date before first coupon
-            // This represents the theoretical previous coupon (usually the dated date)
-            let priorDate = subtractMonths(new Date(firstCouponDate), monthsPerPeriod);
-            
-            // Only add if it's before settlement
-            while (priorDate < settlementDate && couponDates.length < 300) {
-                couponDates.unshift(new Date(priorDate));
-                priorDate = subtractMonths(priorDate, monthsPerPeriod);
-            }
-            
-            // Add one more to ensure we have a period containing settlement
-            if (priorDate < settlementDate) {
-                couponDates.unshift(new Date(priorDate));
-            }
-        }
-        
-    } else {
-        // CASE 2: No first coupon date - calculate backwards from maturity
-        // This is the fallback for when we don't have first coupon information
-        
-        couponDates.push(new Date(maturityDate));
-        let currentDate = new Date(maturityDate);
-        
-        // Generate dates going backwards
-        for (let i = 0; i < 300; i++) {
-            currentDate = subtractMonths(currentDate, monthsPerPeriod);
-            couponDates.unshift(new Date(currentDate));
-            
-            // Stop once we're well before the settlement date
-            if (currentDate < settlementDate) {
-                break;
-            }
-        }
+    const couponDates = [new Date(maturityDate)];
+    let currentDate = new Date(maturityDate);
+
+    // Generate coupon dates going backwards from maturity
+    for (let i = 0; i < 200; i++) {
+        currentDate = subtractMonths(currentDate, monthsPerPeriod);
+        couponDates.unshift(new Date(currentDate));
+        if (currentDate < settlementDate) break;
     }
-    
+
     // Ensure we have at least 2 coupon dates
     if (couponDates.length < 2) {
         throw new Error('Unable to determine coupon period for settlement date');
     }
 
+    let lastCoupon = couponDates[0];
+    let nextCoupon = couponDates[1];
+
     // Find the coupon period that contains the settlement date
-    let lastCoupon = null;
-    let nextCoupon = null;
-    
     for (let i = 0; i < couponDates.length - 1; i++) {
         if (couponDates[i] <= settlementDate && couponDates[i + 1] > settlementDate) {
             lastCoupon = couponDates[i];
@@ -446,58 +374,13 @@ function generateCouponDates(maturityDate, firstCouponDate, frequency, settlemen
             break;
         }
     }
-    
-    // If we didn't find a period, settlement might be before all coupons or after maturity
-    if (!lastCoupon || !nextCoupon) {
-        if (settlementDate < couponDates[0]) {
-            throw new Error(`Settlement date ${formatDate(settlementDate)} is before first coupon ${formatDate(couponDates[0])}`);
-        } else if (settlementDate > couponDates[couponDates.length - 1]) {
-            throw new Error(`Settlement date ${formatDate(settlementDate)} is after maturity ${formatDate(maturityDate)}`);
-        } else {
-            throw new Error('Unable to find coupon period containing settlement date');
-        }
-    }
-    
-    // Additional validation
-    if (lastCoupon > settlementDate) {
-        throw new Error(`Last coupon ${formatDate(lastCoupon)} is after settlement ${formatDate(settlementDate)}`);
-    }
-    
-    if (nextCoupon <= settlementDate) {
-        throw new Error(`Next coupon ${formatDate(nextCoupon)} is not after settlement ${formatDate(settlementDate)}`);
+
+    // Validate that we found a proper period
+    if (lastCoupon > settlementDate || nextCoupon <= settlementDate) {
+        throw new Error('Settlement date is outside valid coupon period');
     }
 
-    return { 
-        lastCoupon, 
-        nextCoupon,
-        allCouponDates: couponDates,
-        // Additional metadata for debugging/validation
-        usedFirstCouponDate: !!(firstCouponDate && firstCouponDate instanceof Date && !isNaN(firstCouponDate.getTime())),
-        totalCouponDates: couponDates.length
-    };
-}
-
-function formatDate(date) {
-    if (!date || !(date instanceof Date)) return 'null';
-    return date.toISOString().split('T')[0];
-}
-
-function addMonths(date, months) {
-    /**
-     * Add months to a date, handling end-of-month edge cases
-     */
-    const result = new Date(date);
-    const originalDay = result.getDate();
-    
-    result.setMonth(result.getMonth() + months);
-    
-    // If the day changed due to month length differences
-    if (result.getDate() !== originalDay) {
-        // Set to last day of the target month
-        result.setDate(0);
-    }
-    
-    return result;
+    return { lastCoupon, nextCoupon };
 }
 
 function subtractMonths(date, months) {
@@ -694,6 +577,11 @@ function parseDate(dateStr) {
     if (!dateStr) return null;
     if (dateStr.includes('T')) return new Date(dateStr.split('T')[0]);
     return new Date(dateStr);
+}
+
+function formatDate(date) {
+    if (!date) return null;
+    return date.toISOString().split('T')[0];
 }
 
 function roundTo(num, decimals) {
