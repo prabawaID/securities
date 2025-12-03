@@ -39,7 +39,7 @@ async function handleChat(request, env) {
       { role: 'user', content: message }
     ];
 
-    const response = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+    const response = await env.AI.run('@cf/openai/gpt-oss-20b', {
       messages,
       tools: [getCusipAnalysisTool()],
     });
@@ -69,7 +69,7 @@ async function handleChat(request, env) {
           }
         ];
 
-        const finalResponse = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+        const finalResponse = await env.AI.run('@cf/openai/gpt-oss-20b', {
           messages: finalMessages
         });
 
@@ -232,8 +232,8 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
 }
 
 function calculatePricing(price, issue, settlementDate) {
-  const couponRate = parseFloat(price.rate || issue?.interestrate || 0);
-  const cleanPrice = parseFloat(price.sell || issue?.priceper100 || 0);
+  const couponRate = parseFloat(price.rate || issue?.interestRate || 0);
+  const cleanPrice = parseFloat(price.sell || issue?.pricePer100 || 0);
   
   // For bills (zero coupon)
   if (price.security_type === 'MARKET BASED BILL' || couponRate === 0) {
@@ -519,9 +519,9 @@ function getChatbotHTML() {
             <div class="examples">
                 <h4>Try asking:</h4>
                 <ul>
-                    <li onclick="sendMessage('Analyze CUSIP 91282CNS6')">📊 "Analyze CUSIP 91282CNS6"</li>
-                    <li onclick="sendMessage('Show all issues for 912810RM2')">📈 "Show all issues for 912810RM2"</li>
-                    <li onclick="sendMessage('Compare original vs latest issue for 91282CNS6')">🔄 "Compare original vs latest issue"</li>
+                    <li onclick="sendMessage('Analyze CUSIP 912797QR1')">📊 "Analyze CUSIP 912797QR1"</li>
+                    <li onclick="sendMessage('Show all issues for 912797QR1')">📈 "Show all issues for 912797QR1"</li>
+                    <li onclick="sendMessage('Compare original vs latest issue for 912797QR1')">🔄 "Compare original vs latest issue for 912797QR1"</li>
                 </ul>
             </div>
         </div>
