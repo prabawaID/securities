@@ -184,16 +184,16 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
       cusip,
       issue_count: issues.length,
       issue_summary: issues.map(i => ({
-        issue_date: i.issueDate //,
-        // auction_date: i.auctiondate,
-        //reopening: i.reopening,
-        //total_accepted: i.totalaccepted,
-        //bid_to_cover_ratio: i.bidtocoverratio
+        issue_date: i.issueDate,
+        auction_date: i.auctionDate,
+        eopening: i.reopening,
+        total_accepted: i.totalAccepted,
+        bid_to_cover_ratio: i.bidToCoverRatio
       })),
       selected_issue: {
         issue_date: selectedIssue?.issueDate,
-        //auction_date: selectedIssue?.auction_date,
-        //reopening: selectedIssue?.reopening,
+        auction_date: selectedIssue?.auctionDate,
+        reopening: selectedIssue?.reopening,
         which: issuePreference === 'original' ? 'Original Issue' : 'Most Recent Issue'
       },
       price_info: {
@@ -207,11 +207,11 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
         issue_date: selectedIssue?.issueDate,
         first_coupon_date: selectedIssue?.firstInterestPaymentDate,
         payment_frequency: selectedIssue?.interestPaymentFrequency || 'Semi-Annual',
-        // dated_date: selectedIssue?.dated_date,
-        // tips: selectedIssue?.tips === 'Yes',
-        // callable: selectedIssue?.callable === 'Yes',
-        // high_yield: selectedIssue?.high_yield,
-        // bid_to_cover: selectedIssue?.bid_to_cover_ratio
+        dated_date: selectedIssue?.datedDate,
+        tips: selectedIssue?.tips === 'Yes',
+        callable: selectedIssue?.callable === 'Yes',
+        high_yield: selectedIssue?.highYield,
+        bid_to_cover: selectedIssue?.bidToCoverRatio
       },
       settlement_info: {
         today: formatDate(today),
@@ -249,10 +249,10 @@ function calculatePricing(price, issue, settlementDate) {
     };
   }
 
-  const frequency = getPaymentFrequency(issue?.interestpaymentfrequency);
-  const maturityDate = parseDate(price.maturity_date || issue?.maturitydate);
-  const firstCouponDate = issue?.firstinterestpaymentdate 
-    ? parseDate(issue.firstinterestpaymentdate)
+  const frequency = getPaymentFrequency(issue?.interestPaymentFrequency);
+  const maturityDate = parseDate(price.maturity_date || issue?.maturityDate);
+  const firstCouponDate = issue?.firstInterestPaymentDate 
+    ? parseDate(issue.firstInterestPaymentDate)
     : null;
 
   const couponDates = generateCouponDates(maturityDate, firstCouponDate, frequency, settlementDate);
