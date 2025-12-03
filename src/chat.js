@@ -277,7 +277,7 @@ function validateCUSIP(cusip) {
     // First 6 can be letters or digits
     // Next 2 must be digits
     // Last 1 is check digit
-    const pattern = /^[0-9A-Z]{6}[0-9]{2}[0-9]$/;
+    const pattern = /^[0-9]{5}[0-9A-Z]{3}[0-9]$/;
     if (!pattern.test(cusip)) {
         return { valid: false, error: 'Invalid CUSIP format' };
     }
