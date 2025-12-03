@@ -609,7 +609,7 @@ function getChatbotHTML() {
                     <div class="tool-result-header">❌ Error</div>\${result.error}</div>\`;
             }
 
-            const sec = result.security_info;
+            const sec = result.price_info;
             const pricing = result.pricing;
             const calcs = pricing.calculation_details;
 
