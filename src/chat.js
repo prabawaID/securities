@@ -143,20 +143,20 @@ function getCusipAnalysisTool() {
 
 async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest', env) {
   try {
-    // Get base security
-    const { results: securities } = await env.DB.prepare(
-      'SELECT * FROM securities WHERE cusip = ?'
+    // Get base price
+    const { results: prices } = await env.DB.prepare(
+      'SELECT * FROM prices WHERE cusip = ?'
     ).bind(cusip).all();
 
-    if (!securities || securities.length === 0) {
+    if (!prices || prices.length === 0) {
       return { error: `CUSIP ${cusip} not found`, cusip };
     }
 
-    const security = securities[0];
+    const price = prices[0];
 
     // Get all issues for this CUSIP
     const { results: issues } = await env.DB.prepare(
-      'SELECT * FROM security_issues WHERE cusip = ? ORDER BY issuedate DESC'
+      'SELECT * FROM securities WHERE cusip = ? ORDER BY issuedate DESC'
     ).bind(cusip).all();
 
     // Determine which issue to use
@@ -177,41 +177,41 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
       : getNextBusinessDay(today);
 
     // Calculate pricing using selected issue
-    const analysis = calculatePricing(security, selectedIssue, settlementDate);
+    const analysis = calculatePricing(price, selectedIssue, settlementDate);
 
     return {
       success: true,
       cusip,
       issue_count: issues.length,
       issue_summary: issues.map(i => ({
-        issue_date: i.issuedate,
-        auction_date: i.auctiondate,
-        reopening: i.reopening,
-        total_accepted: i.totalaccepted,
-        bid_to_cover_ratio: i.bidtocoverratio
+        issue_date: i.issuedate //,
+        // auction_date: i.auctiondate,
+        //reopening: i.reopening,
+        //total_accepted: i.totalaccepted,
+        //bid_to_cover_ratio: i.bidtocoverratio
       })),
       selected_issue: {
-        issue_date: selectedIssue?.issue_date,
-        auction_date: selectedIssue?.auction_date,
-        reopening: selectedIssue?.reopening,
+        issue_date: selectedIssue?.issuedate,
+        //auction_date: selectedIssue?.auction_date,
+        //reopening: selectedIssue?.reopening,
         which: issuePreference === 'original' ? 'Original Issue' : 'Most Recent Issue'
       },
-      security_info: {
-        cusip: security.cusip,
-        security_type: security.security_type,
-        coupon_rate: parseFloat(security.coupon_rate || selectedIssue?.interest_rate || 0),
-        maturity_date: security.maturity_date || selectedIssue?.maturity_date,
-        clean_price: parseFloat(security.price_2 || selectedIssue?.price_per_100 || 0),
+      price_info: {
+        cusip: price.cusip,
+        security_type: price.security_type,
+        coupon_rate: parseFloat(price.coupon_rate || selectedIssue?.interestrate || 0),
+        maturity_date: price.maturity_date || selectedIssue?.maturitydate,
+        clean_price: parseFloat(price.sell || selectedIssue?.priceper100 || 0),
         
         // From selected issue
-        issue_date: selectedIssue?.issue_date,
-        first_coupon_date: selectedIssue?.first_interest_payment_date,
-        payment_frequency: selectedIssue?.interest_payment_frequency || 'Semi-Annual',
-        dated_date: selectedIssue?.dated_date,
-        tips: selectedIssue?.tips === 'Yes',
-        callable: selectedIssue?.callable === 'Yes',
-        high_yield: selectedIssue?.high_yield,
-        bid_to_cover: selectedIssue?.bid_to_cover_ratio
+        issue_date: selectedIssue?.issuedate,
+        first_coupon_date: selectedIssue?.firstinterestpaymentdate,
+        payment_frequency: selectedIssue?.interestpaymentfrequency || 'Semi-Annual',
+        // dated_date: selectedIssue?.dated_date,
+        // tips: selectedIssue?.tips === 'Yes',
+        // callable: selectedIssue?.callable === 'Yes',
+        // high_yield: selectedIssue?.high_yield,
+        // bid_to_cover: selectedIssue?.bid_to_cover_ratio
       },
       settlement_info: {
         today: formatDate(today),
@@ -231,12 +231,12 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
   }
 }
 
-function calculatePricing(security, issue, settlementDate) {
-  const couponRate = parseFloat(security.rate || issue?.interest_rate || 0);
-  const cleanPrice = parseFloat(security.sell || issue?.priceper100 || 0);
+function calculatePricing(price, issue, settlementDate) {
+  const couponRate = parseFloat(price.rate || issue?.interestrate || 0);
+  const cleanPrice = parseFloat(price.sell || issue?.priceper100 || 0);
   
   // For bills (zero coupon)
-  if (security.security_type === 'MARKET BASED BILL' || couponRate === 0) {
+  if (price.security_type === 'MARKET BASED BILL' || couponRate === 0) {
     return {
       clean_price: cleanPrice,
       accrued_interest: 0,
@@ -250,7 +250,7 @@ function calculatePricing(security, issue, settlementDate) {
   }
 
   const frequency = getPaymentFrequency(issue?.interestpaymentfrequency);
-  const maturityDate = parseDate(security.maturity_date || issue?.maturity_date);
+  const maturityDate = parseDate(price.maturity_date || issue?.maturitydate);
   const firstCouponDate = issue?.firstinterestpaymentdate 
     ? parseDate(issue.firstinterestpaymentdate)
     : null;
