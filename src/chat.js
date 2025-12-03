@@ -90,7 +90,7 @@ async function handleChat(request, env) {
     } catch (error) {
         return Response.json({
             error: error.message,
-            stack: error.stack
+            ...(env.ENVIRONMENT === 'development' && { stack: error.stack })
         }, {
             status: 500,
             headers: { 'Access-Control-Allow-Origin': '*' }
@@ -191,6 +191,13 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
         // Determine settlement date
         const today = new Date();
         let settlementDate;
+        
+        // DEBUG: Log the actual dates being used
+        const debugInfo = {
+            today_raw: today.toISOString(),
+            today_formatted: formatDate(today),
+            settlement_date_provided: settlementDateStr || null,
+        };
 
         if (settlementDateStr) {
             settlementDate = parseDate(settlementDateStr);
@@ -201,9 +208,14 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
                     suggestion: 'Use format YYYY-MM-DD'
                 };
             }
+            debugInfo.settlement_date_source = 'user_provided';
         } else {
             settlementDate = getNextBusinessDay(today);
+            debugInfo.settlement_date_source = 'calculated_t_plus_1';
         }
+        
+        debugInfo.settlement_date_final = formatDate(settlementDate);
+        debugInfo.is_business_day = isBusinessDay(settlementDate);
 
         // Calculate pricing using selected issue
         const analysis = calculatePricing(price, selectedIssue, settlementDate);
@@ -211,6 +223,7 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
         return {
             success: true,
             cusip,
+            debug: debugInfo, // DEBUG: Include settlement date debugging
             issue_count: issues.length,
             issue_summary: issues.map(i => ({
                 issue_date: i.issueDate,
@@ -326,6 +339,7 @@ function calculatePricing(price, issue, settlementDate) {
         accrued_interest: roundTo(accruedInterest, 6),
         dirty_price: roundTo(dirtyPrice, 6),
         f_offset: roundTo(f, 8),
+        coupon_dates_debug: couponDates.debug, // DEBUG: Include coupon date debugging
         calculation_details: {
             coupon_rate_percent: roundTo(couponRate, 3),
             payment_frequency: `${frequency}x per year (${getFrequencyName(frequency)})`,
@@ -343,30 +357,102 @@ function calculatePricing(price, issue, settlementDate) {
 }
 
 function generateCouponDates(maturityDate, firstCouponDate, frequency, settlementDate) {
+    /**
+     * Generate coupon dates for a Treasury security
+     * CORRECTED VERSION: Properly uses firstCouponDate parameter
+     * 
+     * @param {Date} maturityDate - Maturity date of the security
+     * @param {Date|null} firstCouponDate - First interest payment date (important for irregular periods)
+     * @param {number} frequency - Coupon frequency (1=annual, 2=semi-annual, 4=quarterly)
+     * @param {Date} settlementDate - Settlement date for the calculation
+     * @returns {Object} Object with lastCoupon, nextCoupon, and allCouponDates
+     */
+    
     if (!maturityDate || !(maturityDate instanceof Date)) {
         throw new Error('Invalid maturity date');
     }
 
     const monthsPerPeriod = 12 / frequency;
-    const couponDates = [new Date(maturityDate)];
-    let currentDate = new Date(maturityDate);
-
-    // Generate coupon dates going backwards from maturity
-    for (let i = 0; i < 200; i++) {
-        currentDate = subtractMonths(currentDate, monthsPerPeriod);
-        couponDates.unshift(new Date(currentDate));
-        if (currentDate < settlementDate) break;
+    const couponDates = [];
+    
+    // STRATEGY: Use firstCouponDate as anchor if available (handles irregular first periods)
+    // Otherwise, fall back to calculating backwards from maturity
+    
+    if (firstCouponDate && firstCouponDate instanceof Date && !isNaN(firstCouponDate.getTime())) {
+        // CASE 1: We have a valid first coupon date - use it as the anchor
+        // This properly handles irregular first periods (short or long)
+        
+        let currentDate = new Date(firstCouponDate);
+        
+        // Build forward from first coupon to maturity
+        while (currentDate <= maturityDate) {
+            couponDates.push(new Date(currentDate));
+            
+            // Check if we've reached maturity
+            if (currentDate.getTime() === maturityDate.getTime()) {
+                break;
+            }
+            
+            currentDate = addMonths(currentDate, monthsPerPeriod);
+            
+            // Safety check to prevent infinite loop
+            if (couponDates.length > 300) {
+                throw new Error('Too many coupon periods - check security data');
+            }
+        }
+        
+        // Ensure maturity date is in the list
+        if (couponDates[couponDates.length - 1].getTime() !== maturityDate.getTime()) {
+            couponDates.push(new Date(maturityDate));
+        }
+        
+        // If settlement is before the first coupon, we need to go backwards
+        // This handles the dated date period (from dated date to first coupon)
+        if (couponDates.length > 0 && settlementDate < couponDates[0]) {
+            // Calculate the quasi-coupon date before first coupon
+            // This represents the theoretical previous coupon (usually the dated date)
+            let priorDate = subtractMonths(new Date(firstCouponDate), monthsPerPeriod);
+            
+            // Only add if it's before settlement
+            while (priorDate < settlementDate && couponDates.length < 300) {
+                couponDates.unshift(new Date(priorDate));
+                priorDate = subtractMonths(priorDate, monthsPerPeriod);
+            }
+            
+            // Add one more to ensure we have a period containing settlement
+            if (priorDate < settlementDate) {
+                couponDates.unshift(new Date(priorDate));
+            }
+        }
+        
+    } else {
+        // CASE 2: No first coupon date - calculate backwards from maturity
+        // This is the fallback for when we don't have first coupon information
+        
+        couponDates.push(new Date(maturityDate));
+        let currentDate = new Date(maturityDate);
+        
+        // Generate dates going backwards
+        for (let i = 0; i < 300; i++) {
+            currentDate = subtractMonths(currentDate, monthsPerPeriod);
+            couponDates.unshift(new Date(currentDate));
+            
+            // Stop once we're well before the settlement date
+            if (currentDate < settlementDate) {
+                break;
+            }
+        }
     }
-
+    
     // Ensure we have at least 2 coupon dates
     if (couponDates.length < 2) {
         throw new Error('Unable to determine coupon period for settlement date');
     }
 
-    let lastCoupon = couponDates[0];
-    let nextCoupon = couponDates[1];
-
     // Find the coupon period that contains the settlement date
+    let lastCoupon = null;
+    let nextCoupon = null;
+    
     for (let i = 0; i < couponDates.length - 1; i++) {
         if (couponDates[i] <= settlementDate && couponDates[i + 1] > settlementDate) {
             lastCoupon = couponDates[i];
@@ -374,13 +460,65 @@ function generateCouponDates(maturityDate, firstCouponDate, frequency, settlemen
             break;
         }
     }
-
-    // Validate that we found a proper period
-    if (lastCoupon > settlementDate || nextCoupon <= settlementDate) {
-        throw new Error('Settlement date is outside valid coupon period');
+    
+    // If we didn't find a period, settlement might be before all coupons or after maturity
+    if (!lastCoupon || !nextCoupon) {
+        if (settlementDate < couponDates[0]) {
+            throw new Error(`Settlement date ${formatDate(settlementDate)} is before first coupon ${formatDate(couponDates[0])}`);
+        } else if (settlementDate > couponDates[couponDates.length - 1]) {
+            throw new Error(`Settlement date ${formatDate(settlementDate)} is after maturity ${formatDate(maturityDate)}`);
+        } else {
+            throw new Error('Unable to find coupon period containing settlement date');
+        }
+    }
+    
+    // Additional validation
+    if (lastCoupon > settlementDate) {
+        throw new Error(`Last coupon ${formatDate(lastCoupon)} is after settlement ${formatDate(settlementDate)}`);
+    }
+    
+    if (nextCoupon <= settlementDate) {
+        throw new Error(`Next coupon ${formatDate(nextCoupon)} is not after settlement ${formatDate(settlementDate)}`);
     }
 
-    return { lastCoupon, nextCoupon };
+    return { 
+        lastCoupon, 
+        nextCoupon,
+        allCouponDates: couponDates,
+        // Additional metadata for debugging/validation
+        usedFirstCouponDate: !!(firstCouponDate && firstCouponDate instanceof Date && !isNaN(firstCouponDate.getTime())),
+        totalCouponDates: couponDates.length,
+        // DEBUG: Show key dates
+        debug: {
+            first_coupon_provided: firstCouponDate ? formatDate(firstCouponDate) : null,
+            last_coupon_found: formatDate(lastCoupon),
+            next_coupon_found: formatDate(nextCoupon),
+            settlement_date_used: formatDate(settlementDate)
+        }
+    };
+}
+
+function formatDate(date) {
+    if (!date || !(date instanceof Date)) return 'null';
+    return date.toISOString().split('T')[0];
+}
+
+function addMonths(date, months) {
+    /**
+     * Add months to a date, handling end-of-month edge cases
+     */
+    const result = new Date(date);
+    const originalDay = result.getDate();
+    
+    result.setMonth(result.getMonth() + months);
+    
+    // If the day changed due to month length differences
+    if (result.getDate() !== originalDay) {
+        // Set to last day of the target month
+        result.setDate(0);
+    }
+    
+    return result;
 }
 
 function subtractMonths(date, months) {
@@ -577,11 +715,6 @@ function parseDate(dateStr) {
     if (!dateStr) return null;
     if (dateStr.includes('T')) return new Date(dateStr.split('T')[0]);
     return new Date(dateStr);
-}
-
-function formatDate(date) {
-    if (!date) return null;
-    return date.toISOString().split('T')[0];
 }
 
 function roundTo(num, decimals) {
@@ -855,6 +988,28 @@ function getChatbotHTML() {
                 \${calcs.f_calculation}<br>
                 Accrued Interest: \${calcs.accrued_interest_formula}<br>
                 Dirty Price: \${calcs.dirty_price_formula}\`;
+            
+            // DEBUG: Display settlement date and coupon date debugging info
+            if (result.debug) {
+                html += \`<br><br><strong>🐛 DEBUG INFO:</strong><br>
+                    <span style="color: #e74c3c; font-weight: bold;">Settlement Date Debugging:</span><br>
+                    • Today (Server): \${result.debug.today_formatted} (raw: \${result.debug.today_raw})<br>
+                    • Settlement Date Source: \${result.debug.settlement_date_source}<br>
+                    • Settlement Date Used: \${result.debug.settlement_date_final}<br>
+                    • Is Business Day: \${result.debug.is_business_day}<br>\`;
+                
+                if (result.debug.settlement_date_provided) {
+                    html += \`• User Provided Date: \${result.debug.settlement_date_provided}<br>\`;
+                }
+            }
+            
+            if (pricing.coupon_dates_debug) {
+                html += \`<br><span style="color: #e74c3c; font-weight: bold;">Coupon Date Debugging:</span><br>
+                    • First Coupon (from DB): \${pricing.coupon_dates_debug.first_coupon_provided || 'Not provided'}<br>
+                    • Last Coupon Found: \${pricing.coupon_dates_debug.last_coupon_found}<br>
+                    • Next Coupon Found: \${pricing.coupon_dates_debug.next_coupon_found}<br>
+                    • Settlement Date in Calc: \${pricing.coupon_dates_debug.settlement_date_used}<br>\`;
+            }
             
             if (result.issue_count > 1) {
                 html += \`<br><br><strong>📋 All Issues:</strong><br>\`;
