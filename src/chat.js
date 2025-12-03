@@ -99,13 +99,13 @@ async function handleChat(request, env) {
 }
 
 function getSystemPrompt() {
-    return `You are a Treasury securities analysis assistant. You help users analyze US Treasury securities including Bills, Notes, Bonds, and TIPS.
+    return `You are a Treasury securities analysis assistant. You help users analyze US Treasury securities including Bills, Notes, and Bonds.
 
 When a user mentions a CUSIP, use the analyze_cusip tool. Note that each CUSIP may have multiple issuances (original issue and reopenings). By default, use the most recent issue for pricing calculations, but explain that multiple issues exist if relevant.
 
 Always explain:
 - Which issue you're using (most recent, original, or specific date)
-- The settlement date (T+1 business day)
+- The settlement date (default: T+1 business day)
 - The accrued interest calculation with f offset details
 - Day count convention (Actual/Actual)
 
@@ -191,13 +191,6 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
         // Determine settlement date
         const today = new Date();
         let settlementDate;
-        
-        // DEBUG: Log the actual dates being used
-        const debugInfo = {
-            today_raw: today.toISOString(),
-            today_formatted: formatDate(today),
-            settlement_date_provided: settlementDateStr || null,
-        };
 
         if (settlementDateStr) {
             settlementDate = parseDate(settlementDateStr);
@@ -208,14 +201,9 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
                     suggestion: 'Use format YYYY-MM-DD'
                 };
             }
-            debugInfo.settlement_date_source = 'user_provided';
         } else {
             settlementDate = getNextBusinessDay(today);
-            debugInfo.settlement_date_source = 'calculated_t_plus_1';
         }
-        
-        debugInfo.settlement_date_final = formatDate(settlementDate);
-        debugInfo.is_business_day = isBusinessDay(settlementDate);
 
         // Calculate pricing using selected issue
         const analysis = calculatePricing(price, selectedIssue, settlementDate);
@@ -223,7 +211,6 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
         return {
             success: true,
             cusip,
-            debug: debugInfo, // DEBUG: Include settlement date debugging
             issue_count: issues.length,
             issue_summary: issues.map(i => ({
                 issue_date: i.issueDate,
@@ -339,7 +326,6 @@ function calculatePricing(price, issue, settlementDate) {
         accrued_interest: roundTo(accruedInterest, 6),
         dirty_price: roundTo(dirtyPrice, 6),
         f_offset: roundTo(f, 8),
-        coupon_dates_debug: couponDates.debug, // DEBUG: Include coupon date debugging
         calculation_details: {
             coupon_rate_percent: roundTo(couponRate, 3),
             payment_frequency: `${frequency}x per year (${getFrequencyName(frequency)})`,
@@ -487,14 +473,7 @@ function generateCouponDates(maturityDate, firstCouponDate, frequency, settlemen
         allCouponDates: couponDates,
         // Additional metadata for debugging/validation
         usedFirstCouponDate: !!(firstCouponDate && firstCouponDate instanceof Date && !isNaN(firstCouponDate.getTime())),
-        totalCouponDates: couponDates.length,
-        // DEBUG: Show key dates
-        debug: {
-            first_coupon_provided: firstCouponDate ? formatDate(firstCouponDate) : null,
-            last_coupon_found: formatDate(lastCoupon),
-            next_coupon_found: formatDate(nextCoupon),
-            settlement_date_used: formatDate(settlementDate)
-        }
+        totalCouponDates: couponDates.length
     };
 }
 
@@ -988,28 +967,6 @@ function getChatbotHTML() {
                 \${calcs.f_calculation}<br>
                 Accrued Interest: \${calcs.accrued_interest_formula}<br>
                 Dirty Price: \${calcs.dirty_price_formula}\`;
-            
-            // DEBUG: Display settlement date and coupon date debugging info
-            if (result.debug) {
-                html += \`<br><br><strong>🐛 DEBUG INFO:</strong><br>
-                    <span style="color: #e74c3c; font-weight: bold;">Settlement Date Debugging:</span><br>
-                    • Today (Server): \${result.debug.today_formatted} (raw: \${result.debug.today_raw})<br>
-                    • Settlement Date Source: \${result.debug.settlement_date_source}<br>
-                    • Settlement Date Used: \${result.debug.settlement_date_final}<br>
-                    • Is Business Day: \${result.debug.is_business_day}<br>\`;
-                
-                if (result.debug.settlement_date_provided) {
-                    html += \`• User Provided Date: \${result.debug.settlement_date_provided}<br>\`;
-                }
-            }
-            
-            if (pricing.coupon_dates_debug) {
-                html += \`<br><span style="color: #e74c3c; font-weight: bold;">Coupon Date Debugging:</span><br>
-                    • First Coupon (from DB): \${pricing.coupon_dates_debug.first_coupon_provided || 'Not provided'}<br>
-                    • Last Coupon Found: \${pricing.coupon_dates_debug.last_coupon_found}<br>
-                    • Next Coupon Found: \${pricing.coupon_dates_debug.next_coupon_found}<br>
-                    • Settlement Date in Calc: \${pricing.coupon_dates_debug.settlement_date_used}<br>\`;
-            }
             
             if (result.issue_count > 1) {
                 html += \`<br><br><strong>📋 All Issues:</strong><br>\`;
