@@ -628,10 +628,10 @@ function getChatbotHTML() {
                 Clean Price: \${pricing.clean_price}<br>
                 Accrued Interest: \${pricing.accrued_interest}<br>
                 <strong>Dirty Price: \${pricing.dirty_price}</strong><br><br>
-                <strong>📐 Calculation:</strong><br>
+                <strong>📐 Calculation (Note & Bond only):</strong><br>
                 \${calcs.f_calculation}<br>
-                AI: \${calcs.accrued_interest_formula}<br>
-                Dirty: \${calcs.dirty_price_formula}\`;
+                Accrued Interest: \${calcs.accrued_interest_formula}<br>
+                Dirty Price: \${calcs.dirty_price_formula}\`;
             
             if (result.issue_count > 1) {
                 html += \`<br><br><strong>📋 All Issues:</strong><br>\`;
