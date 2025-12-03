@@ -105,7 +105,6 @@ When a user mentions a CUSIP, use the analyze_cusip tool. Note that each CUSIP m
 
 Always explain:
 - Which issue you're using (most recent, original, or specific date)
-- The settlement date (default: null)
 - The accrued interest calculation with f offset details
 - Day count convention (Actual/Actual)
 
