@@ -317,7 +317,7 @@ function calculatePricing(price, issue, settlementDate) {
     const f = daysAccrued / daysInPeriod;
 
     const couponPayment = couponRate / frequency;
-    const accruedInterest = couponPayment * f;
+    const accruedInterest = couponPayment * 100 * f;
     const dirtyPrice = cleanPrice + accruedInterest;
 
     return {
