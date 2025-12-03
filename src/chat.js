@@ -156,7 +156,7 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
 
     // Get all issues for this CUSIP
     const { results: issues } = await env.DB.prepare(
-      'SELECT * FROM securities WHERE cusip = ? ORDER BY issuedate DESC'
+      'SELECT * FROM securities WHERE cusip = ? ORDER BY issueDate DESC'
     ).bind(cusip).all();
 
     // Determine which issue to use
@@ -184,14 +184,14 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
       cusip,
       issue_count: issues.length,
       issue_summary: issues.map(i => ({
-        issue_date: i.issuedate //,
+        issue_date: i.issueDate //,
         // auction_date: i.auctiondate,
         //reopening: i.reopening,
         //total_accepted: i.totalaccepted,
         //bid_to_cover_ratio: i.bidtocoverratio
       })),
       selected_issue: {
-        issue_date: selectedIssue?.issuedate,
+        issue_date: selectedIssue?.issueDate,
         //auction_date: selectedIssue?.auction_date,
         //reopening: selectedIssue?.reopening,
         which: issuePreference === 'original' ? 'Original Issue' : 'Most Recent Issue'
@@ -199,14 +199,14 @@ async function analyzeCusip(cusip, settlementDateStr, issuePreference = 'latest'
       price_info: {
         cusip: price.cusip,
         security_type: price.security_type,
-        coupon_rate: parseFloat(price.coupon_rate || selectedIssue?.interestrate || 0),
-        maturity_date: price.maturity_date || selectedIssue?.maturitydate,
+        coupon_rate: parseFloat(price.rate || selectedIssue?.interestRate || 0),
+        maturity_date: price.maturity_date || selectedIssue?.maturityDate,
         clean_price: parseFloat(price.sell || selectedIssue?.priceper100 || 0),
         
         // From selected issue
-        issue_date: selectedIssue?.issuedate,
-        first_coupon_date: selectedIssue?.firstinterestpaymentdate,
-        payment_frequency: selectedIssue?.interestpaymentfrequency || 'Semi-Annual',
+        issue_date: selectedIssue?.issueDate,
+        first_coupon_date: selectedIssue?.firstInterestPaymentDate,
+        payment_frequency: selectedIssue?.interestPaymentFrequency || 'Semi-Annual',
         // dated_date: selectedIssue?.dated_date,
         // tips: selectedIssue?.tips === 'Yes',
         // callable: selectedIssue?.callable === 'Yes',
