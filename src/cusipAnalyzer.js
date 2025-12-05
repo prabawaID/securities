@@ -145,13 +145,16 @@ function calculatePricing(price, issue, settlementDate) {
     // For bills (zero coupon)
     if (price.security_type === 'MARKET BASED BILL' || couponRate === 0) {
         return {
-            clean_price: cleanPrice,
-            accrued_interest: 0,
-            dirty_price: cleanPrice,
+            clean_price: cleanPrice.toFixed(6),
+            accrued_interest: '0.000000',
+            dirty_price: cleanPrice.toFixed(6),
             f_offset: 0,
             calculation_details: {
                 security_type: 'Bill (Zero Coupon)',
-                note: 'Bills have no coupon payments, so accrued interest is 0'
+                note: 'Bills have no coupon payments, so accrued interest is 0',
+                f_calculation: 'N/A (Bills have no coupon periods)',
+                accrued_interest_formula: 'N/A (Bills are zero-coupon securities)',
+                dirty_price_formula: `Clean Price = ${cleanPrice.toFixed(6)} (no accrued interest for Bills)`
             }
         };
     }
@@ -175,9 +178,9 @@ function calculatePricing(price, issue, settlementDate) {
     const dirtyPrice = cleanPrice + accruedInterest;
 
     return {
-        clean_price: roundTo(cleanPrice, 6),
-        accrued_interest: roundTo(accruedInterest, 6),
-        dirty_price: roundTo(dirtyPrice, 6),
+        clean_price: roundTo(cleanPrice, 6).toFixed(6),
+        accrued_interest: roundTo(accruedInterest, 6).toFixed(6),
+        dirty_price: roundTo(dirtyPrice, 6).toFixed(6),
         f_offset: roundTo(f, 8),
         calculation_details: {
             coupon_rate_percent: roundTo(couponRate, 3),
