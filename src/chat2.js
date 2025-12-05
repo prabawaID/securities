@@ -1,5 +1,5 @@
 import { analyzeCusip } from './analyzeCusip.js';
-import { getNSSParameters, calculateSpotRate } from './analyzeNNS.js';
+import { getNSSParameters, calculateSpotRate } from './analyzeNNS_updated.js';
 import { getChatbotHTML } from './chatUI.js';
 
 export default {
