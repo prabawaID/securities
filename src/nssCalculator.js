@@ -49,17 +49,12 @@ export async function fetchMarketData(env, asOfDate = null) {
         // Query to get distinct securities with their yields
         // We'll use the most recent prices and calculate time to maturity
         const query = `
-            SELECT 
-                s.cusip,
-                s.maturityDate,
-                s.issueDate,
-                p.couponRate,
-                p.askPrice,
-                p.bidPrice
-            FROM securities s
-            JOIN prices p ON s.cusip = p.cusip
-            GROUP BY s.cusip
-            ORDER BY s.maturityDate ASC
+            SELECT highYield, issueDate, maturityDate 
+            FROM securities 
+            WHERE highYield IS NOT NULL 
+            AND highYield != 'None' 
+            AND issueDate IS NOT NULL 
+            AND maturityDate IS NOT NULL
         `;
 
         const { results } = await env.DB.prepare(query).all();
@@ -80,7 +75,7 @@ export async function fetchMarketData(env, asOfDate = null) {
             if (yearsToMaturity > 0 && yearsToMaturity <= 30) {
                 // Use coupon rate as proxy for yield (for par securities)
                 // In reality, you'd calculate YTM, but for curve fitting, coupon rate is reasonable
-                const yieldValue = parseFloat(row.couponRate) / 100;
+                const yieldValue = parseFloat(row.highYield) / 100;
                 
                 marketData.push({
                     cusip: row.cusip,
