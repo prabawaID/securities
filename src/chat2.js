@@ -154,7 +154,7 @@ function getCusipAnalysisTool() {
                 },
                 settlement_date: {
                     type: 'string',
-                    description: 'Optional settlement date (YYYY-MM-DD). Defaults to T+1.'
+                    description: 'Optional settlement date (YYYY-MM-DD). Defaults to the next business day after today.'
                 },
                 issue_preference: {
                     type: 'string',
