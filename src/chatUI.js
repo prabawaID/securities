@@ -549,6 +549,8 @@ function getScript() {
                             <div class="data-item"><label>Coupon</label><value>\${sec.coupon_rate}% \${sec.payment_frequency}</value></div>
                             <div class="data-item"><label>Maturity</label><value>\${sec.maturity_date}</value></div>
                             <div class="data-item"><label>Settlement</label><value>\${result.settlement_info.settlement_date}</value></div>
+                            <div class="data-item"><label>Issue Used</label><value>\${result.selected_issue.which} (\${result.selected_issue.issue_date})</value></div>
+                            <div class="data-item"><label>Days Accrued / Period</label><value>\${calcs.days_accrued} / \${calcs.days_in_period}</value></div>
                         </div>
                     </div>
 
