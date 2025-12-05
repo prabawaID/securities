@@ -52,19 +52,21 @@ export async function analyzeCusip(cusip, settlementDateStr, issuePreference = '
 
         // Determine settlement date
         const today = new Date();
-        let settlementDate;
+        let settlementDate = getNextBusinessDay(today);
 
         if (settlementDateStr) {
-            settlementDate = parseDate(settlementDateStr);
-            if (!settlementDate || isNaN(settlementDate.getTime())) {
+            dateFromAIModel = parseDate(settlementDateStr);
+            if (!dateFromAIModel || isNaN(dateFromAIModel.getTime())) {
                 return {
                     error: `Invalid settlement date: ${settlementDateStr}`,
                     cusip,
                     suggestion: 'Use format YYYY-MM-DD'
                 };
             }
-        } else {
-            settlementDate = getNextBusinessDay(today);
+
+            if (dateFromAIModel > settlementDate) {
+                settlementDate = dateFromAIModel;
+            }
         }
 
         // Calculate pricing using selected issue
