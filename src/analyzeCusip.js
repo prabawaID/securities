@@ -55,7 +55,7 @@ export async function analyzeCusip(cusip, settlementDateStr, issuePreference = '
         let settlementDate = getNextBusinessDay(today);
 
         if (settlementDateStr) {
-            dateFromAIModel = parseDate(settlementDateStr);
+            let dateFromAIModel = parseDate(settlementDateStr);
             if (!dateFromAIModel || isNaN(dateFromAIModel.getTime())) {
                 return {
                     error: `Invalid settlement date: ${settlementDateStr}`,
