@@ -62,7 +62,9 @@ async function handleChat(request, env) {
                     env
                 );
             } else if (toolName === 'get_nss_parameters') {
-                toolResult = await getNSSParameters(env);
+                toolResult = await getNSSParameters(
+                    env
+                );
             } else if (toolName === 'get_spot_rate') {
                 toolResult = await calculateSpotRate(
                     toolCall.arguments.years,
@@ -123,7 +125,7 @@ function getSystemPrompt() {
 
 Capabilities:
 1. Analyze specific CUSIPs (accrued interest, dirty price).
-2. Calculate Nelson-Siegel-Svensson (NSS) Curve Parameters based on current market data.
+2. Calculate Nelson-Siegel-Svensson (NSS) Curve Parameters based on market data of Nov 18, 2025.
 3. Estimate annualized spot rates for any time T (0-30 years) using the fitted NSS curve.
 
 When a user mentions a CUSIP, use 'analyze_cusip'.
@@ -136,7 +138,7 @@ IMPORTANT: Format your response using HTML tags for better readability.
 - Use <b> or <strong> for emphasis on key values.
 - Use <ul> and <li> for lists.
 - Use <p> for paragraphs.
-- Do not use Markdown syntax (like ** or #).`;
+- Do not use Markdown syntax (like * or ** or #).`;
 }
 
 function getCusipAnalysisTool() {
@@ -146,9 +148,19 @@ function getCusipAnalysisTool() {
         parameters: {
             type: 'object',
             properties: {
-                cusip: { type: 'string', description: 'The CUSIP identifier' },
-                settlement_date: { type: 'string', description: 'YYYY-MM-DD' },
-                issue_preference: { type: 'string', enum: ['latest', 'original', 'all'] }
+                cusip: {
+                    type: 'string',
+                    description: 'The CUSIP identifier (9 characters)'
+                },
+                settlement_date: {
+                    type: 'string',
+                    description: 'Optional settlement date (YYYY-MM-DD). Defaults to T+1.'
+                },
+                issue_preference: {
+                    type: 'string',
+                    enum: ['latest', 'original', 'all'],
+                    description: 'Which issue to use: latest (most recent), original (first issue), or all (show all issues). Default: latest'
+                }
             },
             required: ['cusip']
         }
