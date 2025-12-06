@@ -385,15 +385,15 @@ export async function getYieldCurve(env, numPoints = 100) {
     return {
         curve: curve,
         parameters: {
-            theta0: params.beta0,
-            theta1: params.beta1,
-            theta2: params.beta2,
-            theta3: params.beta3,
-            lambda1: params.lambda1,
-            lambda2: params.lambda2,
-            rmse: params.rmse,
-            iterations: params.iterations,
-            dataPoints: marketData.length
+            //theta0: params.beta0,
+            //theta1: params.beta1,
+            //theta2: params.beta2,
+            //theta3: params.beta3,
+            //lambda1: params.lambda1,
+            //lambda2: params.lambda2,
+            //rmse: params.rmse,
+            //iterations: params.iterations,
+            //dataPoints: marketData.length
         }
     };
 }
