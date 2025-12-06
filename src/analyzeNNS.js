@@ -20,18 +20,18 @@ async function fetchMarketData(env) {
     // We assume the 'securities' table contains active issues.
     // We use the interestRate as the yield proxy (assuming par for simplicity in this context,
     // or that the table data represents the yield curve points).
-    const { securities } = await env.DB.prepare(
+    const { results } = await env.DB.prepare(
         'SELECT maturityDate, highYield FROM securities WHERE maturityDate IS NOT NULL AND highYield IS NOT NULL'
     ).all();
 
-    if (!securities || securities.length === 0) {
+    if (!results || results.length === 0) {
         throw new Error("No security data available to build yield curve.");
     }
 
     const today = new Date();
     const marketData = [];
 
-    for (const sec of securities) {
+    for (const sec of results) {
         const maturity = new Date(sec.maturityDate);
         if (isNaN(maturity.getTime())) continue;
 
