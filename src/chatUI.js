@@ -498,7 +498,7 @@ function getScript() {
                 </div>\`;
             }
 
-            if (toolName === 'get_nss_parameters') {
+            if (toolName === 'get_nss_parameters' || (result && result.theta0 !== undefined)) {
                 return \`<div class="tool-card">
                     <div class="tool-header"><i class="fas fa-chart-area"></i> NSS Curve Model</div>
                     <div class="tool-body">
@@ -517,7 +517,7 @@ function getScript() {
                 </div>\`;
             }
 
-            if (toolName === 'get_spot_rate') {
+            if (toolName === 'get_spot_rate' || (result && result.spotRate !== undefined) {
                  return \`<div class="tool-card">
                     <div class="tool-header"><i class="fas fa-crosshairs"></i> Spot Rate Estimate</div>
                     <div class="tool-body">
@@ -535,48 +535,50 @@ function getScript() {
                 </div>\`;
             }
 
-            // Default: analyze_cusip
-            const sec = result.price_info;
-            const pricing = result.pricing;
-            const calcs = pricing.calculation_details;
+            if (result && result.price_info) {
+                // Default: analyze_cusip
+                const sec = result.price_info;
+                const pricing = result.pricing;
+                const calcs = pricing.calculation_details;
 
-            return \`<div class="tool-card">
-                <div class="tool-header">
-                    <i class="fas fa-file-invoice-dollar"></i> Analysis: \${sec.cusip}
-                    \${result.issue_count > 1 ? '<span style="background:#EEF2FF; color:#4F46E5; padding:2px 6px; border-radius:4px; font-size:0.7rem; margin-left:auto;">Multi-Issue</span>' : ''}
-                </div>
-                <div class="tool-body">
-                    <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e5e7eb;">
-                        <div class="data-grid">
-                            <div class="data-item"><label>Security Type</label><value>\${sec.security_type}</value></div>
-                            <div class="data-item"><label>Coupon</label><value>\${sec.coupon_rate}% \${sec.payment_frequency}</value></div>
-                            <div class="data-item"><label>Maturity</label><value>\${sec.maturity_date}</value></div>
-                            <div class="data-item"><label>Settlement</label><value>\${result.settlement_info.settlement_date}</value></div>
-                            <div class="data-item"><label>Issue Used</label><value>\${result.selected_issue.which} (\${result.selected_issue.issue_date})</value></div>
-                            <div class="data-item"><label>Days Accrued / Period</label><value>\${calcs.days_accrued} / \${calcs.days_in_period}</value></div>
+                return \`<div class="tool-card">
+                    <div class="tool-header">
+                        <i class="fas fa-file-invoice-dollar"></i> Analysis: \${sec.cusip}
+                        \${result.issue_count > 1 ? '<span style="background:#EEF2FF; color:#4F46E5; padding:2px 6px; border-radius:4px; font-size:0.7rem; margin-left:auto;">Multi-Issue</span>' : ''}
+                    </div>
+                    <div class="tool-body">
+                        <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e5e7eb;">
+                            <div class="data-grid">
+                                <div class="data-item"><label>Security Type</label><value>\${sec.security_type}</value></div>
+                                <div class="data-item"><label>Coupon</label><value>\${sec.coupon_rate}% \${sec.payment_frequency}</value></div>
+                                <div class="data-item"><label>Maturity</label><value>\${sec.maturity_date}</value></div>
+                                <div class="data-item"><label>Settlement</label><value>\${result.settlement_info.settlement_date}</value></div>
+                                <div class="data-item"><label>Issue Used</label><value>\${result.selected_issue.which} (\${result.selected_issue.issue_date})</value></div>
+                                <div class="data-item"><label>Days Accrued / Period</label><value>\${calcs.days_accrued} / \${calcs.days_in_period}</value></div>
+                            </div>
+                        </div>
+
+                        <div style="background: #F9FAFB; padding: 10px; border-radius: 6px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>Clean Price</span>
+                                <span>\${pricing.clean_price}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; color: #059669;">
+                                <span>+ Accrued Interest</span>
+                                <span>\${pricing.accrued_interest}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-weight: 700; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+                                <span>Dirty Price</span>
+                                <span style="color: #4F46E5;">\${pricing.dirty_price}</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 12px; font-size: 0.75rem; color: #6B7280;">
+                            <strong>Calculation:</strong> \${calcs.accrued_interest_formula}
                         </div>
                     </div>
-
-                    <div style="background: #F9FAFB; padding: 10px; border-radius: 6px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>Clean Price</span>
-                            <span>\${pricing.clean_price}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; color: #059669;">
-                            <span>+ Accrued Interest</span>
-                            <span>\${pricing.accrued_interest}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-weight: 700; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
-                            <span>Dirty Price</span>
-                            <span style="color: #4F46E5;">\${pricing.dirty_price}</span>
-                        </div>
-                    </div>
-
-                    <div style="margin-top: 12px; font-size: 0.75rem; color: #6B7280;">
-                        <strong>Calculation:</strong> \${calcs.accrued_interest_formula}
-                    </div>
-                </div>
-            </div>\`;
+                </div>\`;
+            }
         }
     `;
 }
