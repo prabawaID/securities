@@ -456,11 +456,20 @@ function getBody() {
             <div class="suggestions">
                 <div style="font-size: 0.75rem; font-weight: 600; color: #9CA3AF; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Example Questions</div>
 
+                <button class="suggestion-btn" onclick="sendMessage('Show me the yield curve for today')">
+                    <i class="fas fa-chart-area" style="margin-right: 12px; width: 16px;"></i> Current Yield Curve
+                </button>
                 <button class="suggestion-btn" onclick="sendMessage('What is the current 10-year Treasury yield?')">
                     <i class="fas fa-chart-bar" style="margin-right: 12px; width: 16px;"></i> 10-Year Yield Analysis
                 </button>
-                <button class="suggestion-btn" onclick="sendMessage('Show me the yield curve for today')">
-                    <i class="fas fa-chart-area" style="margin-right: 12px; width: 16px;"></i> Current Yield Curve
+                <button class="suggestion-btn" onclick="sendMessage('What is the 7.5 year spot rate?')">
+                    <i class="fas fa-chart-line" style="margin-right: 12px; width: 16px;"></i> Spot Rate Calc
+                </button>
+                <button class="suggestion-btn" onclick="sendMessage('What are the initial NSS parameters?')">
+                    <i class="fas fa-wave-square" style="margin-right: 12px; width: 16px;"></i> NSS Parameters
+                </button>
+                <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8')">
+                    <i class="fas fa-search" style="margin-right: 12px; width: 16px;"></i> Analyze CUSIP
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('Calculate dirty price for CUSIP 912810TN4')">
                     <i class="fas fa-calculator" style="margin-right: 12px; width: 16px;"></i> Price Calculator
@@ -468,21 +477,8 @@ function getBody() {
                 <button class="suggestion-btn" onclick="sendMessage('Compare 2Y vs 10Y spread')">
                     <i class="fas fa-chart-line" style="margin-right: 12px; width: 16px;"></i> Spread Analysis
                 </button>
-
-                <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8')">
-                    <i class="fas fa-search" style="margin-right: 12px; width: 16px;"></i> Analyze CUSIP
-                </button>
                 <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8 with settlement date of Dec 23, 2025')">
                     <i class="fas fa-calendar" style="margin-right: 12px; width: 16px;"></i> Future Settlement
-                </button>
-                <button class="suggestion-btn" onclick="sendMessage('What are the initial NSS parameters?')">
-                    <i class="fas fa-wave-square" style="margin-right: 12px; width: 16px;"></i> NSS Parameters
-                </button>
-                <button class="suggestion-btn" onclick="sendMessage('What is the 7.5 year spot rate?')">
-                    <i class="fas fa-info-circle" style="margin-right: 12px; width: 16px;"></i> Spot Rate Calc
-                </button>
-                <button class="suggestion-btn" onclick="sendMessage('Show me the yield curve')">
-                    <i class="fas fa-chart-line" style="margin-right: 12px; width: 16px;"></i> Show yield curve
                 </button>
 
             </div>
