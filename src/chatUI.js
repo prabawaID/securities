@@ -517,7 +517,7 @@ function getScript() {
                 </div>\`;
             }
 
-            if (toolName === 'get_spot_rate' || (result && result.spotRate !== undefined) {
+            if (toolName === 'get_spot_rate' || (result && result.spotRate !== undefined)) {
                  return \`<div class="tool-card">
                     <div class="tool-header"><i class="fas fa-crosshairs"></i> Spot Rate Estimate</div>
                     <div class="tool-body">
