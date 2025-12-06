@@ -3,12 +3,12 @@ import { nelderMead } from './nelderMead.js';
 // --- Configuration ---
 
 // Starting guesses for the NSS parameters
-const THETA0_SEARCH_START = 0.05;
-const THETA1_SEARCH_START = 0.0;
-const THETA2_SEARCH_START = 0.0;
-const THETA3_SEARCH_START = 0.0;
-const LAMBDA1_SEARCH_START = 1.0;
-const LAMBDA2_SEARCH_START = 1.0;
+const THETA0_SEARCH_START =  0.040;  // 4% long-term rate
+const THETA1_SEARCH_START = -0.020;  // -2% short-term component
+const THETA2_SEARCH_START =  0.010;  // 1% medium-term hump
+const THETA3_SEARCH_START = -0.005;  // -0.5% second hump
+const LAMBDA1_SEARCH_START = 1.000;
+const LAMBDA2_SEARCH_START = 1.000;
 
 /**
  * Fetches security data from the DB and transforms it into yield curve terms.
@@ -20,18 +20,18 @@ async function fetchMarketData(env) {
     // We assume the 'securities' table contains active issues.
     // We use the interestRate as the yield proxy (assuming par for simplicity in this context,
     // or that the table data represents the yield curve points).
-    const { results } = await env.DB.prepare(
-        'SELECT maturityDate, interestRate FROM securities WHERE maturityDate IS NOT NULL AND interestRate IS NOT NULL'
+    const { securities } = await env.DB.prepare(
+        'SELECT maturityDate, highYield FROM securities WHERE maturityDate IS NOT NULL AND highYield IS NOT NULL'
     ).all();
 
-    if (!results || results.length === 0) {
+    if (!securities || securities.length === 0) {
         throw new Error("No security data available to build yield curve.");
     }
 
     const today = new Date();
     const marketData = [];
 
-    for (const sec of results) {
+    for (const sec of securities) {
         const maturity = new Date(sec.maturityDate);
         if (isNaN(maturity.getTime())) continue;
 
@@ -43,7 +43,7 @@ async function fetchMarketData(env) {
         if (term <= 0.001) continue;
 
         // Ensure yield is a number (handle string inputs if DB returns strings)
-        let yieldVal = parseFloat(sec.interestRate);
+        let yieldVal = parseFloat(sec.highYield);
         if (isNaN(yieldVal)) continue;
 
         marketData.push({ term: term, yield: yieldVal });
@@ -57,7 +57,7 @@ async function fetchMarketData(env) {
 /**
  * Calculates the Sum of Squared Errors (SSE) between model and market yields.
  */
-const createErrorFunction = (values) => {
+const calculateNSSErrors = (values) => {
     return (X) => {
         const theta0 = X[0];
         const theta1 = X[1];
@@ -66,9 +66,9 @@ const createErrorFunction = (values) => {
         const lambda1 = X[4];
         const lambda2 = X[5];
 
-        // Constraint: Lambdas must be positive
+        // Constraint: Lambdas must be positive to ensure convergence
         if (lambda1 <= 0.05 || lambda2 <= 0.05) {
-            return 1e9;
+            return 1e9; // Penalty for invalid parameters
         }
 
         let runningError = 0;
@@ -102,7 +102,7 @@ const createErrorFunction = (values) => {
 export async function getNSSParameters(env) {
     const values = await fetchMarketData(env);
 
-    const calculateErrors = createErrorFunction(values);
+    const calculateErrors = calculateNSSErrors(values);
 
     const result = nelderMead(calculateErrors, [
         THETA0_SEARCH_START,
