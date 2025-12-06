@@ -468,9 +468,6 @@ function getBody() {
                 <button class="suggestion-btn" onclick="sendMessage('Compare 2Y vs 10Y spread')">
                     <i class="fas fa-chart-line" style="margin-right: 12px; width: 16px;"></i> Spread Analysis
                 </button>
-                <button class="suggestion-btn" onclick="sendMessage('Explain the NSS model parameters')">
-                    <i class="fas fa-info-circle" style="margin-right: 12px; width: 16px;"></i> NSS Model Info
-                </button>
 
                 <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8')">
                     <i class="fas fa-search" style="margin-right: 12px; width: 16px;"></i> Analyze CUSIP
@@ -482,7 +479,7 @@ function getBody() {
                     <i class="fas fa-wave-square" style="margin-right: 12px; width: 16px;"></i> NSS Parameters
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('What is the 7.5 year spot rate?')">
-                    <i class="fas fa-calculator" style="margin-right: 12px; width: 16px;"></i> Spot Rate Calc
+                    <i class="fas fa-info-circle" style="margin-right: 12px; width: 16px;"></i> Spot Rate Calc
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('Show me the yield curve')">
                     <i class="fas fa-chart-line" style="margin-right: 12px; width: 16px;"></i> Show yield curve
