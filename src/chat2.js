@@ -1,5 +1,5 @@
 import { analyzeCusip } from './analyzeCusip.js';
-import { getNSSParameters, calculateSpotRate, getYieldCurve } from './analyzeNNS_alt.js';
+import { getNSSParameters, calculateSpotRate, getYieldCurve } from './analyzeNNS.js';
 import { getChatbotHTML } from './chatUI.js';
 
 export default {

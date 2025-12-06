@@ -181,3 +181,76 @@ export async function calculateSpotRate(t, env) {
         parameters: params
     };
 }
+
+export async function getYieldCurve(numPoints = 100, env) {
+    if (t < 0 || t > 100) {
+        throw new Error("Number of points must be between 0 and 100 years.");
+    }
+
+    const values = await fetchMarketData(env);
+
+    // Get fresh parameters
+    const params = await getNSSParameters(env);
+
+
+    // Generate curve points
+    const minMaturity = 0.01;
+    const maxMaturity = Math.max(...values.map(d => d.term));
+    const step = maxMaturity / (numPoints - 1);
+    
+    const curve = [];
+    for (let i = 0; i < numPoints; i++) {
+        const maturity = minMaturity + (i * step);
+
+
+
+        const b0 = params.theta0;
+        const b1 = params.theta1;
+        const b2 = params.theta2;
+        const b3 = params.theta3;
+        const t1 = params.lambda1;
+        const t2 = params.lambda2;
+
+        const term1 = maturity / t1;
+        const term2 = maturity / t2;
+        const exp1 = Math.exp(-term1);
+        const exp2 = Math.exp(-term2);
+
+        const factor1 = (1 - exp1) / term1;
+        const factor2 = factor1 - exp1;
+        const factor3 = ((1 - exp2) / term2) - exp2;
+
+        const yieldDecimal = b0 + (b1 * factor1) + (b2 * factor2) + (b3 * factor3);
+        const ratePercent = yieldDecimal * 100;
+
+
+
+
+        // Validate the rate to catch any calculation errors
+        if (!isFinite(ratePercent) || isNaN(ratePercent)) {
+            console.warn(`Invalid rate at maturity ${maturity}: ${ratePercent}`);
+            // Skip invalid points rather than including nulls
+            continue;
+        }
+
+        curve.push({
+            maturity: maturity,
+            rate: ratePercent
+        });
+    }
+    
+    return {
+        curve: curve,
+        parameters: {
+            theta0: params.theta0,
+            theta1: params.theta1,
+            theta2: params.theta2,
+            theta3: params.theta3,
+            lambda1: params.lambda1,
+            lambda2: params.lambda2,
+            rmse: params.squaredError,
+            iterations: params.iterations,
+            dataPoints: values.length
+        }
+    };
+}
