@@ -3,7 +3,7 @@ export function getChatbotHTML() {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Treasury Security AI Analyst</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -33,33 +33,72 @@ function getStyles() {
             --sidebar-width: 280px;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--bg-color);
             background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
             background-size: 20px 20px;
-            height: 100vh;
-            width: 100vw;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             color: var(--text-primary);
-            overflow: hidden; /* Prevent body scroll */
+            padding: 0.5rem;
         }
 
         .main-container {
             width: 100%;
             max-width: 1200px;
-            height: 90vh;
+            height: 95vh;
+            min-height: 500px;
             background: var(--chat-bg);
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-lg);
             display: flex;
             overflow: hidden;
             position: relative;
-            transition: all 0.3s ease;
+        }
+
+        /* Mobile Menu Toggle */
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1000;
+            background: var(--user-msg-bg);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            width: 2.5rem;
+            height: 2.5rem;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: transform 0.2s;
+        }
+
+        .mobile-menu-toggle:active {
+            transform: scale(0.95);
+        }
+
+        /* Sidebar Overlay for Mobile */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 998;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
         }
 
         /* Sidebar */
@@ -70,9 +109,8 @@ function getStyles() {
             display: flex;
             flex-direction: column;
             padding: 1.5rem;
-            flex-shrink: 0;
-            z-index: 50;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.3s ease;
+            z-index: 999;
         }
 
         .brand {
@@ -84,13 +122,34 @@ function getStyles() {
         }
 
         .brand i { font-size: 1.5rem; }
-        .brand span { font-weight: 700; font-size: 1.125rem; color: #111827; }
+        .brand span { 
+            font-weight: 700; 
+            font-size: 1.125rem; 
+            color: #111827;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-close {
+            display: none;
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: transparent;
+            border: none;
+            color: #6B7280;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+        }
 
         .suggestions {
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
             overflow-y: auto;
+            flex: 1;
         }
 
         .suggestion-btn {
@@ -103,8 +162,7 @@ function getStyles() {
             font-size: 0.875rem;
             color: var(--text-secondary);
             transition: all 0.2s;
-            display: flex;
-            align-items: center;
+            min-height: 44px; /* Touch-friendly */
         }
 
         .suggestion-btn:hover {
@@ -119,8 +177,7 @@ function getStyles() {
             display: flex;
             flex-direction: column;
             background: white;
-            min-width: 0; /* Important for flex child truncation */
-            position: relative;
+            min-width: 0; /* Fix flex overflow */
         }
 
         .chat-header {
@@ -132,55 +189,42 @@ function getStyles() {
             justify-content: space-between;
             align-items: center;
             z-index: 10;
+            min-height: 60px;
         }
 
-        /* Mobile Menu Button - Hidden by default */
-        .mobile-menu-btn {
-            display: none;
-            background: none;
-            border: none;
-            font-size: 1.25rem;
-            color: var(--text-primary);
-            cursor: pointer;
-            padding: 0.5rem;
-            margin-right: 0.5rem;
+        .header-info h2 { 
+            font-size: 1rem; 
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-
-        /* Overlay for mobile sidebar */
-        .sidebar-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 40;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-            backdrop-filter: blur(2px);
+        .header-info p { 
+            font-size: 0.875rem; 
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-
-        .header-info { display: flex; flex-direction: column; }
-        .header-info h2 { font-size: 1rem; font-weight: 600; }
-        .header-info p { font-size: 0.875rem; color: var(--text-secondary); }
 
         .messages-container {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 1.5rem;
             scroll-behavior: smooth;
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
         }
 
         .message {
             display: flex;
-            gap: 1rem;
-            max-width: 85%;
+            gap: 0.75rem;
+            max-width: 90%;
             animation: slideIn 0.3s ease-out;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .message.user {
@@ -189,14 +233,15 @@ function getStyles() {
         }
 
         .avatar {
-            width: 2.25rem;
-            height: 2.25rem;
+            width: 2.5rem;
+            height: 2.5rem;
+            min-width: 2.5rem;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            font-size: 0.9rem;
+            font-size: 1rem;
         }
 
         .bot-avatar { background: #e0e7ff; color: #4F46E5; }
@@ -208,7 +253,7 @@ function getStyles() {
             font-size: 0.95rem;
             line-height: 1.6;
             position: relative;
-            word-wrap: break-word; /* Prevent overflow */
+            min-width: 0;
             max-width: 100%;
         }
 
@@ -232,7 +277,6 @@ function getStyles() {
             margin-top: 0.75rem;
             overflow: hidden;
             box-shadow: var(--shadow-sm);
-            width: 100%;
         }
 
         .tool-header {
@@ -253,501 +297,655 @@ function getStyles() {
             font-size: 0.9rem;
             font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
             color: #374151;
-            overflow-x: auto; /* Allow horizontal scroll for code/data */
+            overflow-x: auto;
         }
 
-        /* Responsive Grid */
         .data-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
-            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .data-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
         }
 
         .data-item label {
-            display: block;
             font-size: 0.75rem;
             color: var(--text-secondary);
-            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
         }
-        
+
         .data-item value {
+            font-size: 0.9rem;
             font-weight: 600;
             color: var(--text-primary);
-            word-break: break-all;
         }
 
-        /* Chart Container */
         .chart-container {
             position: relative;
-            height: 300px; /* Reduced base height */
-            min-height: 250px;
-            margin-top: 1rem;
-            padding: 0.5rem;
-            background: white;
-            border-radius: 0.5rem;
+            height: 350px;
             width: 100%;
+            margin: 1rem 0;
         }
 
-        .chart-controls {
+        .chart-actions {
             display: flex;
             gap: 0.5rem;
             margin-top: 0.75rem;
-            padding-top: 0.75rem;
-            border-top: 1px dashed #e5e7eb;
             flex-wrap: wrap;
         }
 
         .chart-btn {
-            padding: 0.5rem 1rem;
-            background: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.375rem;
-            cursor: pointer;
+            padding: 0.5rem 0.75rem;
             font-size: 0.875rem;
-            color: var(--text-secondary);
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background: white;
+            cursor: pointer;
             transition: all 0.2s;
-            flex: 1; /* Expand on mobile */
-            text-align: center;
-            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-height: 44px; /* Touch-friendly */
         }
 
         .chart-btn:hover {
-            background: #eef2ff;
+            background: #f9fafb;
             border-color: #4F46E5;
             color: #4F46E5;
         }
 
         /* Input Area */
         .input-area {
-            padding: 1.25rem;
-            background: white;
+            padding: 1rem 1.5rem;
             border-top: 1px solid #e5e7eb;
-        }
-
-        .input-form {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .chat-input {
-            width: 100%;
-            padding: 1rem 3.5rem 1rem 1.5rem;
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 3rem;
-            font-size: 1rem;
-            transition: all 0.2s;
-            outline: none;
-            -webkit-appearance: none; /* iOS reset */
-        }
-
-        .chat-input:focus {
             background: white;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 0.875rem 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            font-size: 0.95rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 44px;
+            max-height: 150px;
+            transition: border-color 0.2s;
+        }
+
+        #user-input:focus {
+            outline: none;
             border-color: #4F46E5;
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
-        .send-btn {
-            position: absolute;
-            right: 0.5rem;
-            width: 2.5rem;
-            height: 2.5rem;
-            border-radius: 50%;
+        #send-btn {
+            padding: 0.875rem 1.5rem;
             background: var(--primary-gradient);
             color: white;
             border: none;
+            border-radius: 0.75rem;
+            font-weight: 600;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s;
-            z-index: 5;
+            transition: all 0.2s;
+            white-space: nowrap;
+            min-height: 44px;
         }
 
-        .send-btn:hover { transform: scale(1.05); }
-        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #send-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        #send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .thinking {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .typing-dots span {
+            width: 0.375rem;
+            height: 0.375rem;
+            background: #9CA3AF;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+        }
+
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
 
         @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        /* Typing Indicator */
-        .typing { display: flex; gap: 4px; padding: 0.5rem; }
-        .dot {
-            width: 6px; height: 6px;
-            background: #9CA3AF; border-radius: 50%;
-            animation: bounce 1.4s infinite ease-in-out;
-        }
-        .dot:nth-child(1) { animation-delay: -0.32s; }
-        .dot:nth-child(2) { animation-delay: -0.16s; }
-        
         @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-0.5rem); }
         }
 
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+        /* ===== RESPONSIVE BREAKPOINTS ===== */
 
-        /* =========================================
-           Responsive Design / Media Queries
-           ========================================= */
-        
+        /* Tablet and below */
         @media (max-width: 1024px) {
             .main-container {
                 max-width: 100%;
                 height: 100vh;
                 border-radius: 0;
             }
-            body { padding: 0; }
+
+            .data-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 0.75rem;
+            }
+
+            .chart-container {
+                height: 300px;
+            }
         }
 
+        /* Mobile landscape and below */
         @media (max-width: 768px) {
-            .mobile-menu-btn { display: block; }
-            
+            body {
+                padding: 0;
+            }
+
+            .main-container {
+                border-radius: 0;
+                height: 100vh;
+            }
+
+            /* Hide sidebar by default on mobile */
             .sidebar {
-                position: absolute;
-                left: 0;
+                position: fixed;
                 top: 0;
+                left: 0;
                 bottom: 0;
                 transform: translateX(-100%);
-                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+                width: 280px;
+                max-width: 80vw;
             }
 
             .sidebar.active {
                 transform: translateX(0);
             }
 
-            .sidebar-overlay.active {
-                opacity: 1;
-                pointer-events: auto;
+            .sidebar-overlay {
+                display: block;
             }
 
-            .message { max-width: 92%; }
-            .messages-container { padding: 1rem; }
-            .chat-input { font-size: 16px; /* Prevents iOS zoom on focus */ }
-            
-            .data-grid {
-                grid-template-columns: 1fr; /* Stack grid items on mobile */
+            .mobile-menu-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
-            
-            .chart-container { height: 250px; }
+
+            .sidebar-close {
+                display: block;
+            }
+
+            .chat-header {
+                padding: 1rem;
+                padding-left: 4rem; /* Space for mobile menu button */
+            }
+
+            .messages-container {
+                padding: 1rem;
+                gap: 1rem;
+            }
+
+            .message {
+                max-width: 95%;
+                gap: 0.5rem;
+            }
+
+            .avatar {
+                width: 2rem;
+                height: 2rem;
+                min-width: 2rem;
+                font-size: 0.875rem;
+            }
+
+            .message-content {
+                padding: 0.875rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .input-area {
+                padding: 0.75rem;
+            }
+
+            .input-wrapper {
+                gap: 0.5rem;
+            }
+
+            #user-input {
+                font-size: 16px; /* Prevent zoom on iOS */
+            }
+
+            #send-btn {
+                padding: 0.875rem 1rem;
+            }
+
+            .data-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .chart-container {
+                height: 250px;
+            }
+
+            .tool-body {
+                padding: 0.75rem;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Small mobile */
+        @media (max-width: 480px) {
+            .header-info h2 {
+                font-size: 0.875rem;
+            }
+
+            .header-info p {
+                font-size: 0.75rem;
+            }
+
+            .brand span {
+                font-size: 1rem;
+            }
+
+            .message {
+                max-width: 100%;
+            }
+
+            .avatar {
+                width: 1.75rem;
+                height: 1.75rem;
+                min-width: 1.75rem;
+                font-size: 0.75rem;
+            }
+
+            .message-content {
+                padding: 0.75rem 0.875rem;
+                font-size: 0.875rem;
+            }
+
+            .suggestion-btn {
+                font-size: 0.8125rem;
+                padding: 0.625rem;
+            }
+
+            .tool-header {
+                font-size: 0.8125rem;
+                padding: 0.625rem 0.75rem;
+            }
+
+            .chart-container {
+                height: 220px;
+            }
+
+            .chart-btn {
+                padding: 0.5rem;
+                font-size: 0.8125rem;
+            }
+
+            #send-btn {
+                padding: 0.875rem;
+            }
+        }
+
+        /* Landscape mode optimizations */
+        @media (max-height: 600px) and (orientation: landscape) {
+            .main-container {
+                height: 100vh;
+            }
+
+            .messages-container {
+                padding: 0.75rem;
+            }
+
+            .message {
+                gap: 0.5rem;
+            }
+
+            .chat-header {
+                padding: 0.75rem 1rem;
+                min-height: 50px;
+            }
+
+            .input-area {
+                padding: 0.75rem;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+            }
+
+            .main-container {
+                box-shadow: none;
+                border: 1px solid #e5e7eb;
+            }
+
+            .sidebar,
+            .input-area,
+            .mobile-menu-toggle,
+            .chart-actions {
+                display: none;
+            }
+
+            .chat-area {
+                border: none;
+            }
+
+            .message {
+                page-break-inside: avoid;
+            }
         }
     `;
 }
 
 function getBody() {
     return `
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle menu">
+        <i class="fas fa-bars"></i>
+    </button>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
     <div class="main-container">
-        <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
         <div class="sidebar" id="sidebar">
+            <button class="sidebar-close" id="sidebar-close" aria-label="Close sidebar">
+                <i class="fas fa-times"></i>
+            </button>
             <div class="brand">
                 <i class="fas fa-chart-line"></i>
-                <span>TreasuryAI</span>
+                <span>Treasury Analyst</span>
             </div>
-            
             <div class="suggestions">
-                <div style="font-size: 0.75rem; font-weight: 600; color: #9CA3AF; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Example Questions</div>
-                <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8')">
-                    <i class="fas fa-search" style="margin-right: 12px; width: 16px;"></i> Analyze CUSIP
+                <button class="suggestion-btn" onclick="setSuggestion('What is the current 10-year Treasury yield?')">
+                    <i class="fas fa-chart-bar"></i> 10-Year Yield Analysis
                 </button>
-                <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8 with settlement date of Dec 23, 2025')">
-                    <i class="fas fa-calendar" style="margin-right: 12px; width: 16px;"></i> Future Settlement
+                <button class="suggestion-btn" onclick="setSuggestion('Show me the yield curve for today')">
+                    <i class="fas fa-chart-area"></i> Current Yield Curve
                 </button>
-                <button class="suggestion-btn" onclick="sendMessage('What are the initial NSS parameters?')">
-                    <i class="fas fa-wave-square" style="margin-right: 12px; width: 16px;"></i> NSS Parameters
+                <button class="suggestion-btn" onclick="setSuggestion('Calculate dirty price for CUSIP 912810TN4')">
+                    <i class="fas fa-calculator"></i> Price Calculator
                 </button>
-                <button class="suggestion-btn" onclick="sendMessage('What is the 7.5 year spot rate?')">
-                    <i class="fas fa-calculator" style="margin-right: 12px; width: 16px;"></i> Spot Rate Calc
+                <button class="suggestion-btn" onclick="setSuggestion('Compare 2Y vs 10Y spread')">
+                    <i class="fas fa-chart-line"></i> Spread Analysis
                 </button>
-                <button class="suggestion-btn" onclick="sendMessage('Show me the yield curve')">
-                    <i class="fas fa-chart-line" style="margin-right: 12px; width: 16px;"></i> Show yield curve
+                <button class="suggestion-btn" onclick="setSuggestion('Explain the NSS model parameters')">
+                    <i class="fas fa-info-circle"></i> NSS Model Info
                 </button>
             </div>
         </div>
 
         <div class="chat-area">
             <div class="chat-header">
-                <div style="display: flex; align-items: center;">
-                    <button class="mobile-menu-btn" id="mobileMenuBtn">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div class="header-info">
-                        <h2>Financial Assistant</h2>
-                        <p>Powered by Cloudflare Workers AI</p>
-                    </div>
-                </div>
-                <div style="color: #10B981; font-size: 0.875rem;">
-                    <i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 4px;"></i> Online
+                <div class="header-info">
+                    <h2>Treasury Security AI Analyst</h2>
+                    <p>Powered by Claude & NSS Model</p>
                 </div>
             </div>
 
-            <div class="messages-container" id="messages">
+            <div class="messages-container" id="messages-container">
                 <div class="message assistant">
-                    <div class="avatar bot-avatar"><i class="fas fa-robot"></i></div>
+                    <div class="avatar bot-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
                     <div class="message-content">
-                        Hello! I'm your Treasury Security analysis assistant. I can help you analyze CUSIPs, calculate accrued interest, or fit the Nelson-Siegel-Svensson yield curve. How can I help you today?
+                        👋 Welcome! I'm your Treasury Security AI Analyst. I can help you with:
+                        <br><br>
+                        • Real-time yield curve analysis using NSS models<br>
+                        • CUSIP-based security pricing and calculations<br>
+                        • Accrued interest and dirty price computations<br>
+                        • Treasury market insights and analytics
+                        <br><br>
+                        What would you like to explore today?
                     </div>
                 </div>
             </div>
 
             <div class="input-area">
-                <form class="input-form" id="chatForm">
-                    <input type="text" class="chat-input" id="messageInput" 
-                           placeholder="Type your query..." autocomplete="off">
-                    <button type="submit" class="send-btn" id="sendButton">
-                        <i class="fas fa-paper-plane"></i>
+                <div class="input-wrapper">
+                    <textarea 
+                        id="user-input" 
+                        placeholder="Ask about Treasury securities..."
+                        rows="1"
+                        aria-label="Message input"
+                    ></textarea>
+                    <button id="send-btn" onclick="sendMessage()" aria-label="Send message">
+                        <i class="fas fa-paper-plane"></i> Send
                     </button>
-                </form>
+                </div>
             </div>
         </div>
-    </div>`;
+    </div>
+    `;
 }
 
 function getScript() {
     return `
-        const messagesContainer = document.getElementById('messages');
-        const chatForm = document.getElementById('chatForm');
-        const messageInput = document.getElementById('messageInput');
-        const sendButton = document.getElementById('sendButton');
+        const messagesContainer = document.getElementById('messages-container');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
         const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebarOverlay');
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        
-        const conversationHistory = [];
-        let chartInstances = {};
+        const sidebarClose = document.getElementById('sidebar-close');
+        const chartInstances = {};
 
-        // Mobile Menu Logic
+        // Mobile menu functionality
         function toggleSidebar() {
             sidebar.classList.toggle('active');
             sidebarOverlay.classList.toggle('active');
+            document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
         }
 
-        mobileMenuBtn.addEventListener('click', toggleSidebar);
+        mobileMenuToggle.addEventListener('click', toggleSidebar);
         sidebarOverlay.addEventListener('click', toggleSidebar);
+        sidebarClose.addEventListener('click', toggleSidebar);
 
-        chatForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const message = messageInput.value.trim();
-            if (message) sendMessage(message);
+        // Auto-resize textarea
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
         });
 
-        // Expose sendMessage globally for suggestion buttons
-        window.sendMessage = async function(message) {
-            // Close sidebar on mobile if it's open
-            if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
+        // Send on Enter (but allow Shift+Enter for new line)
+        userInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function setSuggestion(text) {
+            userInput.value = text;
+            userInput.focus();
+            // Auto-resize after setting text
+            userInput.style.height = 'auto';
+            userInput.style.height = Math.min(userInput.scrollHeight, 150) + 'px';
+            // Close sidebar on mobile after selection
+            if (window.innerWidth <= 768) {
                 toggleSidebar();
             }
+        }
 
-            addMessage(message, 'user');
-            messageInput.value = '';
-            conversationHistory.push({ role: 'user', content: message });
-            
-            toggleInput(false);
-            const loadingId = addLoadingIndicator();
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            addMessage('user', message);
+            userInput.value = '';
+            userInput.style.height = 'auto';
+            sendBtn.disabled = true;
+
+            addMessage('assistant', '<div class="thinking">Analyzing... <div class="typing-dots"><span></span><span></span><span></span></div></div>', true);
 
             try {
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message, history: conversationHistory })
+                    body: JSON.stringify({ message })
                 });
 
                 const data = await response.json();
-                removeLoadingIndicator(loadingId);
+                removeLastMessage();
 
                 if (data.error) {
-                    addMessage('Error: ' + data.error, 'assistant', true);
+                    addMessage('assistant', '❌ ' + data.error);
                 } else {
-                    let content = data.response;
-                    if (data.tool_result) {
-                        content += formatToolResult(data.tool_result, data.tool_name);
+                    let content = data.response || '';
+                    
+                    if (data.tool_results && data.tool_results.length > 0) {
+                        for (const result of data.tool_results) {
+                            content += formatToolResult(result);
+                        }
                     }
-                    addMessage(content, 'assistant');
-                    conversationHistory.push({ role: 'assistant', content: data.response });
+                    
+                    addMessage('assistant', content);
+
+                    if (data.tool_results) {
+                        setTimeout(() => {
+                            data.tool_results.forEach((result, index) => {
+                                if (result.tool === 'get_yield_curve' && result.data) {
+                                    const chartId = 'chart-' + Date.now() + '-' + index;
+                                    createYieldCurveChart(chartId, result.data);
+                                }
+                            });
+                        }, 100);
+                    }
                 }
             } catch (error) {
-                removeLoadingIndicator(loadingId);
-                addMessage('Connection Error: ' + error.message, 'assistant', true);
+                removeLastMessage();
+                addMessage('assistant', '❌ Connection error. Please try again.');
+                console.error('Error:', error);
             }
 
-            toggleInput(true);
-            messageInput.focus();
-        };
-
-        function toggleInput(enabled) {
-            messageInput.disabled = !enabled;
-            sendButton.disabled = !enabled;
-            if (enabled) {
-                sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
-            } else {
-                sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            }
+            sendBtn.disabled = false;
+            userInput.focus();
         }
 
-        function addMessage(content, role, isError = false) {
+        function addMessage(role, content, temporary = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = \`message \${role}\`;
-            
-            const avatarDiv = document.createElement('div');
-            avatarDiv.className = \`avatar \${role === 'user' ? 'user-avatar' : 'bot-avatar'}\`;
-            avatarDiv.innerHTML = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
-            
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            if (isError) contentDiv.style.color = '#EF4444';
-            contentDiv.innerHTML = content;
-            
-            if (role === 'user') {
-                messageDiv.appendChild(contentDiv);
-                messageDiv.appendChild(avatarDiv);
-            } else {
-                messageDiv.appendChild(avatarDiv);
-                messageDiv.appendChild(contentDiv);
-            }
-            
-            messagesContainer.appendChild(messageDiv);
-            scrollToBottom();
-        }
+            if (temporary) messageDiv.id = 'temp-message';
 
-        function addLoadingIndicator() {
-            const id = 'loading-' + Date.now();
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message assistant';
-            messageDiv.id = id;
-            
+            const avatarIcon = role === 'user' ? 'fa-user' : 'fa-robot';
+            const avatarClass = role === 'user' ? 'user-avatar' : 'bot-avatar';
+
             messageDiv.innerHTML = \`
-                <div class="avatar bot-avatar"><i class="fas fa-robot"></i></div>
-                <div class="message-content">
-                    <div class="typing">
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                        <div class="dot"></div>
-                    </div>
+                <div class="avatar \${avatarClass}">
+                    <i class="fas \${avatarIcon}"></i>
                 </div>
+                <div class="message-content">\${content}</div>
             \`;
-            
+
             messagesContainer.appendChild(messageDiv);
-            scrollToBottom();
-            return id;
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        function removeLoadingIndicator(id) {
-            const el = document.getElementById(id);
-            if (el) el.remove();
+        function removeLastMessage() {
+            const temp = document.getElementById('temp-message');
+            if (temp) temp.remove();
         }
 
-        function scrollToBottom() {
-            setTimeout(() => {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 50);
-        }
-
-        function formatToolResult(result, toolName) {
-            if (result.error) {
-                return \`<div class="tool-card" style="border-left: 4px solid #EF4444;">
-                    <div class="tool-header"><i class="fas fa-exclamation-circle" style="color:#EF4444"></i> Error Analysis</div>
-                    <div class="tool-body">\${result.error}</div>
-                </div>\`;
-            }
-
-            // Handle yield curve visualization
-            if (toolName === 'get_yield_curve' || (result && result.curve && Array.isArray(result.curve))) {
-                const chartId = 'chart-' + Date.now();
-                
-                setTimeout(() => {
-                    createYieldCurveChart(chartId, result);
-                }, 100);
-                
+        function formatToolResult(result) {
+            if (result.tool === 'get_yield_curve' && result.data) {
+                const chartId = 'chart-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
                 return \`<div class="tool-card">
                     <div class="tool-header">
-                        <i class="fas fa-chart-area"></i> Treasury Yield Curve
+                        <i class="fas fa-chart-line"></i> Yield Curve Analysis
+                        <span style="background:#EEF2FF; color:#4F46E5; padding:2px 8px; border-radius:4px; font-size:0.7rem; margin-left:auto;">
+                            \${result.data.parameters.date || 'Live Data'}
+                        </span>
                     </div>
                     <div class="tool-body">
+                        <div class="data-grid">
+                            <div class="data-item">
+                                <label>Beta0 (Level)</label>
+                                <value>\${result.data.parameters.beta0.toFixed(4)}</value>
+                            </div>
+                            <div class="data-item">
+                                <label>Beta1 (Slope)</label>
+                                <value>\${result.data.parameters.beta1.toFixed(4)}</value>
+                            </div>
+                            <div class="data-item">
+                                <label>Beta2 (Curvature)</label>
+                                <value>\${result.data.parameters.beta2.toFixed(4)}</value>
+                            </div>
+                            <div class="data-item">
+                                <label>Beta3 (Extra)</label>
+                                <value>\${result.data.parameters.beta3.toFixed(4)}</value>
+                            </div>
+                            <div class="data-item">
+                                <label>Tau1</label>
+                                <value>\${result.data.parameters.tau1.toFixed(4)}</value>
+                            </div>
+                            <div class="data-item">
+                                <label>Tau2</label>
+                                <value>\${result.data.parameters.tau2.toFixed(4)}</value>
+                            </div>
+                        </div>
                         <div class="chart-container">
                             <canvas id="\${chartId}"></canvas>
                         </div>
-                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #e5e7eb;">
-                            <div class="data-grid">
-                                <div class="data-item">
-                                    <label>Model RMSE</label>
-                                    <value>\${(result.parameters.squaredError * 100).toFixed(4)}%</value>
-                                </div>
-                                <div class="data-item">
-                                    <label>Data Points</label>
-                                    <value>\${result.parameters.dataPoints}</value>
-                                </div>
-                                <div class="data-item">
-                                    <label>Iterations</label>
-                                    <value>\${result.parameters.iterations}</value>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="chart-controls">
+                        <div class="chart-actions">
                             <button class="chart-btn" onclick="downloadChartData('\${chartId}')">
-                                <i class="fas fa-download"></i> CSV
+                                <i class="fas fa-download"></i> Download Data
                             </button>
                             <button class="chart-btn" onclick="downloadChartImage('\${chartId}')">
-                                <i class="fas fa-image"></i> PNG
+                                <i class="fas fa-image"></i> Download Chart
                             </button>
                         </div>
                     </div>
                 </div>\`;
             }
 
-            if (toolName === 'get_nss_parameters' || (result && result.theta0 !== undefined)) {
-                return \`<div class="tool-card">
-                    <div class="tool-header"><i class="fas fa-chart-area"></i> NSS Curve Model</div>
-                    <div class="tool-body">
-                        <div class="data-grid">
-                            <div class="data-item"><label>Theta 0 (Long-term)</label><value>\${result.theta0.toFixed(4)}</value></div>
-                            <div class="data-item"><label>Theta 1 (Short-term)</label><value>\${result.theta1.toFixed(4)}</value></div>
-                            <div class="data-item"><label>Theta 2 (Mid-term)</label><value>\${result.theta2.toFixed(4)}</value></div>
-                            <div class="data-item"><label>Theta 3 (Mid-term 2)</label><value>\${result.theta3.toFixed(4)}</value></div>
-                            <div class="data-item"><label>Lambda 1 (Decay)</label><value>\${result.lambda1.toFixed(4)}</value></div>
-                            <div class="data-item"><label>Lambda 2 (Decay)</label><value>\${result.lambda2.toFixed(4)}</value></div>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 0.8rem; color: #6B7280; border-top: 1px dashed #E5E7EB; padding-top: 8px;">
-                            Fit Error (SSE): \${result.squaredError.toFixed(6)} \${result.squaredError ? ' | RMSE: ' + (result.squaredError * 100).toFixed(4) + '%' : ''}
-                        </div>
-                    </div>
-                </div>\`;
-            }
-
-            if (toolName === 'get_spot_rate' || (result && result.spotRate !== undefined)) {
-                 return \`<div class="tool-card">
-                    <div class="tool-header"><i class="fas fa-crosshairs"></i> Spot Rate Estimate</div>
-                    <div class="tool-body">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <div style="font-size: 0.8rem; color: #6B7280;">Time Horizon</div>
-                                <div style="font-weight: 600; font-size: 1.1rem;">\${result.t} Years</div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-size: 0.8rem; color: #6B7280;">Annualized Spot Rate</div>
-                                <div style="font-weight: 700; font-size: 1.5rem; color: #4F46E5;">\${result.spotRate.toFixed(3)}%</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>\`;
-            }
-
-            if (toolName === 'analyze_cusip' || (result && result.price_info)) {
-                const sec = result.price_info;
-                const pricing = result.pricing;
-                const calcs = pricing.calculation_details;
+            if (result.tool === 'get_cusip_details' && result.data) {
+                const sec = result.data.security_details;
+                const pricing = result.data.pricing;
+                const calcs = result.data.calculation_details;
 
                 return \`<div class="tool-card">
                     <div class="tool-header">
                         <i class="fas fa-file-invoice-dollar"></i> Analysis: \${sec.cusip}
-                        \${result.issue_count > 1 ? '<span style="background:#EEF2FF; color:#4F46E5; padding:2px 6px; border-radius:4px; font-size:0.7rem; margin-left:auto;">Multi-Issue</span>' : ''}
+                        \${result.data.issue_count > 1 ? '<span style="background:#EEF2FF; color:#4F46E5; padding:2px 6px; border-radius:4px; font-size:0.7rem; margin-left:auto;">Multi-Issue</span>' : ''}
                     </div>
                     <div class="tool-body">
                         <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #e5e7eb;">
@@ -755,9 +953,9 @@ function getScript() {
                                 <div class="data-item"><label>Security Type</label><value>\${sec.security_type}</value></div>
                                 <div class="data-item"><label>Coupon</label><value>\${sec.coupon_rate}% \${sec.payment_frequency}</value></div>
                                 <div class="data-item"><label>Maturity</label><value>\${sec.maturity_date}</value></div>
-                                <div class="data-item"><label>Settlement</label><value>\${result.settlement_info.settlement_date}</value></div>
-                                <div class="data-item"><label>Issue Used</label><value>\${result.selected_issue.which}</value></div>
-                                <div class="data-item"><label>Accrual</label><value>\${calcs.days_accrued} / \${calcs.days_in_period}</value></div>
+                                <div class="data-item"><label>Settlement</label><value>\${result.data.settlement_info.settlement_date}</value></div>
+                                <div class="data-item"><label>Issue Used</label><value>\${result.data.selected_issue.which} (\${result.data.selected_issue.issue_date})</value></div>
+                                <div class="data-item"><label>Days Accrued / Period</label><value>\${calcs.days_accrued} / \${calcs.days_in_period}</value></div>
                             </div>
                         </div>
 
@@ -774,6 +972,10 @@ function getScript() {
                                 <span>Dirty Price</span>
                                 <span style="color: #4F46E5;">\${pricing.dirty_price}</span>
                             </div>
+                        </div>
+
+                        <div style="margin-top: 12px; font-size: 0.75rem; color: #6B7280; word-break: break-word;">
+                            <strong>Calculation:</strong> \${calcs.accrued_interest_formula}
                         </div>
                     </div>
                 </div>\`;
@@ -795,12 +997,14 @@ function getScript() {
                     data: data.curve.map(point => point.rate),
                     borderColor: '#4F46E5',
                     backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                    borderWidth: 2,
+                    borderWidth: 3,
                     fill: true,
                     tension: 0.4,
                     pointRadius: 0,
                     pointHoverRadius: 6,
-                    pointHitRadius: 15 // Easier to touch on mobile
+                    pointHoverBackgroundColor: '#4F46E5',
+                    pointHoverBorderColor: '#ffffff',
+                    pointHoverBorderWidth: 2
                 }]
             };
 
@@ -812,7 +1016,14 @@ function getScript() {
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: false // Save space on mobile
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: { size: 12, weight: '600' },
+                                color: '#374151',
+                                usePointStyle: true,
+                                padding: 15
+                            }
                         },
                         tooltip: {
                             mode: 'index',
@@ -822,19 +1033,54 @@ function getScript() {
                             bodyColor: '#ffffff',
                             borderColor: '#4F46E5',
                             borderWidth: 1,
-                            padding: 10
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                title: (context) => {
+                                    return 'Maturity: ' + parseFloat(context[0].label).toFixed(2) + ' years';
+                                },
+                                label: (context) => {
+                                    return 'Yield: ' + context.parsed.y.toFixed(3) + '%';
+                                }
+                            }
                         }
                     },
                     scales: {
                         x: {
-                            title: { display: true, text: 'Maturity (Years)', color: '#9CA3AF' },
-                            grid: { display: false },
-                            ticks: { maxTicksLimit: 6, color: '#6B7280' }
+                            title: {
+                                display: true,
+                                text: 'Time to Maturity (Years)',
+                                color: '#374151',
+                                font: { size: 12, weight: '600' }
+                            },
+                            grid: {
+                                color: '#f3f4f6',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 10,
+                                color: '#6B7280',
+                                font: { size: 11 }
+                            }
                         },
                         y: {
-                            title: { display: true, text: 'Yield (%)', color: '#9CA3AF' },
-                            grid: { color: '#f3f4f6' },
-                            ticks: { color: '#6B7280' }
+                            title: {
+                                display: true,
+                                text: 'Yield (%)',
+                                color: '#374151',
+                                font: { size: 12, weight: '600' }
+                            },
+                            grid: {
+                                color: '#f3f4f6',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#6B7280',
+                                font: { size: 11 },
+                                callback: function(value) {
+                                    return value.toFixed(2) + '%';
+                                }
+                            }
                         }
                     },
                     interaction: {
@@ -848,15 +1094,24 @@ function getScript() {
 
         window.downloadChartData = function(chartId) {
             const chart = chartInstances[chartId];
-            if (!chart) return;
+            if (!chart) {
+                alert('Chart not found. Please try again.');
+                return;
+            }
 
             try {
                 const data = chart.data.datasets[0].data;
                 const labels = chart.data.labels;
-                let csvContent = "Maturity,Yield\\n";
+                
+                let csvContent = "Maturity (Years),Yield (%)\\n";
                 labels.forEach((label, index) => {
-                    csvContent += label + "," + (data[index] || 0).toFixed(4) + "\\n";
+                    const value = data[index];
+                    const formattedValue = (value !== null && value !== undefined) 
+                        ? value.toFixed(4) 
+                        : 'N/A';
+                    csvContent += label + "," + formattedValue + "\\n";
                 });
+
                 const blob = new Blob([csvContent], { type: 'text/csv' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -867,14 +1122,18 @@ function getScript() {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             } catch (error) {
-                console.error(error);
-                alert('Download failed');
+                console.error('Error downloading chart data:', error);
+                alert('Failed to download data: ' + error.message);
             }
         };
 
         window.downloadChartImage = function(chartId) {
             const chart = chartInstances[chartId];
-            if (!chart) return;
+            if (!chart) {
+                alert('Chart not found. Please try again.');
+                return;
+            }
+
             try {
                 const url = chart.toBase64Image();
                 const a = document.createElement('a');
@@ -884,7 +1143,8 @@ function getScript() {
                 a.click();
                 document.body.removeChild(a);
             } catch (error) {
-                alert('Download failed');
+                console.error('Error downloading chart image:', error);
+                alert('Failed to download image: ' + error.message);
             }
         };
     `;
