@@ -480,7 +480,7 @@ function getBody() {
                         <i class="fas fa-bars"></i>
                     </button>
                     <div class="header-info">
-                        <h2>Financial Assistant</h2>
+                        <h2>Treasury Security AI Analyst</h2>
                         <p>Powered by Cloudflare Workers AI</p>
                     </div>
                 </div>
