@@ -112,16 +112,15 @@ const calculateNSSErrors = (values) => {
             const t = values[i].term;
             const marketYield = values[i].yield / 100;
 
-            const term1 = t / lambda1;
-            const term2 = t / lambda2;
-            const exp1 = Math.exp(-term1);
-            const exp2 = Math.exp(-term2);
+            const modelYield = nssCurve(
+                t,
+                params.theta0,
+                params.theta1,
+                params.theta2,
+                params.theta3,
+                params.lambda1,
+                params.lambda2);
 
-            const factor1 = (1 - exp1) / term1;
-            const factor2 = factor1 - exp1;
-            const factor3 = ((1 - exp2) / term2) - exp2;
-
-            const modelYield = theta0 + (theta1 * factor1) + (theta2 * factor2) + (theta3 * factor3);
             runningError += Math.pow(marketYield - modelYield, 2);
         }
 
