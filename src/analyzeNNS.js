@@ -176,23 +176,20 @@ export async function calculateSpotRate(t, env) {
     // Get fresh parameters
     const params = await getNSSParameters(env);
 
-    const b0 = params.theta0;
-    const b1 = params.theta1;
-    const b2 = params.theta2;
-    const b3 = params.theta3;
-    const t1 = params.lambda1;
-    const t2 = params.lambda2;
+    const yieldDecimal = await nssCurve(
+        t,
+        params.theta0,
+        params.theta1,
+        params.theta2,
+        params.theta3,
+        params.lambda1,
+        params.lambda2);
 
-    const term1 = t / t1;
-    const term2 = t / t2;
-    const exp1 = Math.exp(-term1);
-    const exp2 = Math.exp(-term2);
+    // Validate the rate to catch any calculation errors
+    if (!isFinite(yieldDecimal) || isNaN(yieldDecimal)) {
+        console.warn(`Invalid yield at maturity ${t}: ${yieldDecimal}`);
+    }
 
-    const factor1 = (1 - exp1) / term1;
-    const factor2 = factor1 - exp1;
-    const factor3 = ((1 - exp2) / term2) - exp2;
-
-    const yieldDecimal = b0 + (b1 * factor1) + (b2 * factor2) + (b3 * factor3);
     const ratePercent = yieldDecimal * 100;
 
     return {
