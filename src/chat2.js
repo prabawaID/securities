@@ -1,5 +1,5 @@
 import { analyzeCusip } from './analyzeCusip.js';
-import { getNSSParameters, calculateSpotRate } from './analyzeNNS_alt.js';
+import { getNSSParameters, calculateSpotRate, getYieldCurve } from './analyzeNNS_alt.js';
 import { getChatbotHTML } from './chatUI.js';
 
 export default {
@@ -45,7 +45,8 @@ async function handleChat(request, env) {
             tools: [
                 getCusipAnalysisTool(),
                 getNSSParametersTool(),
-                getSpotRateTool()
+                getSpotRateTool(),
+                getYieldCurveTool()
             ],
         });
 
@@ -68,6 +69,11 @@ async function handleChat(request, env) {
             } else if (toolName === 'get_spot_rate') {
                 toolResult = await calculateSpotRate(
                     toolCall.arguments.years,
+                    env
+                );
+            }else if (toolName === 'get_yield_curve') {
+                toolResult = await getYieldCurve(
+                    toolCall.arguments.num_points,
                     env
                 );
             }
@@ -131,6 +137,7 @@ Capabilities:
 When a user mentions a CUSIP, use 'analyze_cusip'.
 When a user asks for "NSS parameters", "curve parameters", or "fitted parameters", use 'get_nss_parameters'.
 When a user asks for a "spot rate" at a specific year/time (e.g. "7.5 year spot rate"), use 'get_spot_rate'.
+When a user asks for a "show me the yield curve", use 'get_yield_curve'.
 
 Always explain the result clearly. For spot rates, mention that it's derived from the NSS model fitted to current market data.
 
@@ -188,6 +195,23 @@ function getSpotRateTool() {
                 }
             },
             required: ['years']
+        }
+    };
+}
+
+function getYieldCurveTool() {
+    return {
+        name: 'get_yield_curve',
+        description: 'Show yield curve graph across a number of points.',
+        parameters: {
+            type: 'object',
+            properties: {
+                num_points: { 
+                    type: 'number', 
+                    description: 'The number of points to display 30 years horizon. Must be between 0 and 100.' 
+                }
+            },
+            required: ['num_points']
         }
     };
 }
