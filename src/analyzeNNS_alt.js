@@ -360,21 +360,22 @@ export async function calculateSpotRate(t, env) {
  * @returns {Promise<Object>} - Array of {maturity, rate} and parameters.
  */
 export async function getYieldCurve(env, numPoints = 100) {
-    const marketData = await fetchMarketData(env);
+    //const marketData = await fetchMarketData(env);
     
-    const calculator = new NSSCurveCalculator();
-    calculator.loadData(marketData);
+    //const calculator = new NSSCurveCalculator();
+    //calculator.loadData(marketData);
     
-    const params = calculator.fit();
+    //const params = calculator.fit();
     
     // Generate curve points
-    const maxMaturity = Math.max(...marketData.map(d => d.term));
-    const step = maxMaturity / (numPoints - 1);
+    //const maxMaturity = Math.max(...marketData.map(d => d.term));
+    //const step = maxMaturity / (numPoints - 1);
+    const step = 30 / (numPoints - 1)
     
     const curve = [];
     for (let i = 0; i < numPoints; i++) {
         const maturity = i * step;
-        const rate = calculator.getSpotRate(maturity) * 100; // Convert to percentage
+        const rate = 2 * step // calculator.getSpotRate(maturity) * 100; // Convert to percentage
         curve.push({
             maturity: maturity,
             rate: rate
