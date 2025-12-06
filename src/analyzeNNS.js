@@ -10,17 +10,6 @@ const THETA3_SEARCH_START =  0.01;  // -0.5% second hump
 const LAMBDA1_SEARCH_START = 1.50;
 const LAMBDA2_SEARCH_START = 3.00;
 
-// --- Constraints ---
-// NSS parameters can be unstable. We constrain them to economically plausible ranges.
-// Rates are in decimal form (e.g., 0.20 = 20%)
-const CONSTRAINTS = {
-    theta0: { min: 0.00, max: 0.20 }, // Long-run rate must be positive, max 20%
-    theta1: { min: -0.20, max: 0.20 }, // Short-term component spread
-    theta2: { min: -0.20, max: 0.20 }, // Hump 1
-    theta3: { min: -0.20, max: 0.20 }, // Hump 2
-    lambda: { min: 0.10, max: 10.00 }  // Decay factors (prevent 0 or extreme oscillation)
-};
-
 /**
  * Fetches security data from the DB and transforms it into yield curve terms.
  * @param {Object} env - The worker environment containing the DB binding.
@@ -28,18 +17,21 @@ const CONSTRAINTS = {
  */
 async function fetchMarketData(env) {
     // We select securities that have a valid interest rate and maturity date.
-    const { results } = await env.DB.prepare(`
-        SELECT p.cusip, p.security_type, s.highYield, s.highInvestmentRate, s.maturityDate 
-        FROM ( 
-            SELECT 
-                *, 
-                ROW_NUMBER() OVER (PARTITION BY cusip ORDER BY issueDate DESC) as rn 
-            FROM securities 
-            ) s, prices p 
-        WHERE 
-            s.cusip = p.cusip AND 
-            rn = 1
-    `).all();
+    // We assume the 'securities' table contains active issues.
+    // We use the interestRate as the yield proxy (assuming par for simplicity in this context,
+    // or that the table data represents the yield curve points).
+    const { results } = await env.DB.prepare(' \
+        SELECT p.cusip, p.security_type, s.highYield, s.highInvestmentRate, s.maturityDate \
+        FROM ( \
+            SELECT \
+                *, \
+                ROW_NUMBER() OVER (PARTITION BY cusip ORDER BY issueDate DESC) as rn \
+            FROM securities \
+            ) s, prices p \
+        WHERE \
+            s.cusip = p.cusip AND \
+            rn = 1'
+    ).all();
 
     if (!results || results.length === 0) {
         throw new Error("No security data available to build yield curve.");
@@ -56,13 +48,13 @@ async function fetchMarketData(env) {
         const diffTime = maturity - today;
         const term = diffTime / (1000 * 60 * 60 * 24 * 365.25);
 
-        // Filter out expired or extremely short-term bonds
-        // NSS behaves poorly with t=0, so we filter very small terms
-        if (term < 0.002) continue;
+        // Filter out expired or extremely short-term bonds if necessary
+        if (term < 0.000) continue;
 
+        // Ensure yield is a number (handle string inputs if DB returns strings)
         let yieldVal;
         
-        if (sec.security_type === 'MARKET BASED BILL')
+        if (sec.security_type == 'MARKET BASED BILL')
             yieldVal = parseFloat(sec.highInvestmentRate);
         else
             yieldVal = parseFloat(sec.highYield);
@@ -78,37 +70,6 @@ async function fetchMarketData(env) {
 }
 
 /**
- * Checks if parameters are within bounds and calculates a penalty if not.
- * This guides the optimizer back to valid regions.
- */
-const checkBounds = (theta0, theta1, theta2, theta3, lambda1, lambda2) => {
-    let penalty = 0;
-    const penaltyWeight = 10000; // Strong pressure to return to bounds
-
-    // Helper to add penalty
-    const addPenalty = (val, min, max) => {
-        if (val < min) return (min - val) * penaltyWeight;
-        if (val > max) return (val - max) * penaltyWeight;
-        return 0;
-    };
-
-    penalty += addPenalty(theta0, CONSTRAINTS.theta0.min, CONSTRAINTS.theta0.max);
-    penalty += addPenalty(theta1, CONSTRAINTS.theta1.min, CONSTRAINTS.theta1.max);
-    penalty += addPenalty(theta2, CONSTRAINTS.theta2.min, CONSTRAINTS.theta2.max);
-    penalty += addPenalty(theta3, CONSTRAINTS.theta3.min, CONSTRAINTS.theta3.max);
-    penalty += addPenalty(lambda1, CONSTRAINTS.lambda.min, CONSTRAINTS.lambda.max);
-    penalty += addPenalty(lambda2, CONSTRAINTS.lambda.min, CONSTRAINTS.lambda.max);
-
-    // Constraint: Lambda1 and Lambda2 should not be equal (singularity prevention)
-    // If they are too close, the model collapses to Nelson-Siegel and matrices become singular.
-    if (Math.abs(lambda1 - lambda2) < 0.2) {
-        penalty += (0.2 - Math.abs(lambda1 - lambda2)) * penaltyWeight;
-    }
-
-    return penalty;
-};
-
-/**
  * Calculates the Sum of Squared Errors (SSE) between model and market yields.
  */
 const calculateNSSErrors = (values) => {
@@ -120,41 +81,27 @@ const calculateNSSErrors = (values) => {
         const lambda1 = X[4];
         const lambda2 = X[5];
 
-        // 1. Calculate Penalty for Out-of-Bounds
-        // If parameters are invalid, we return the penalty immediately + a large base number.
-        // We do NOT run the math if bounds are violated significantly to save compute/prevent NaN.
-        const penalty = checkBounds(theta0, theta1, theta2, theta3, lambda1, lambda2);
-        
-        if (penalty > 0) {
-            return 1e6 + penalty; 
+        // Constraint: Lambdas must be positive to ensure convergence
+        if (lambda1 <= 0.05 || lambda2 <= 0.05) {
+            return 1e9; // Penalty for invalid parameters
         }
 
-        // 2. Calculate Standard SSE
         let runningError = 0;
 
         for (let i = 0; i < values.length; i++) {
             const t = values[i].term;
-            // Ensure marketYield is decimal (Input assumed to be percent, e.g. 5.5)
             const marketYield = values[i].yield / 100;
 
             const term1 = t / lambda1;
             const term2 = t / lambda2;
-            
-            // Optimization: Pre-calculate exponentials
             const exp1 = Math.exp(-term1);
             const exp2 = Math.exp(-term2);
 
-            // Factor 1: (1 - e^(-t/L)) / (t/L)
             const factor1 = (1 - exp1) / term1;
-            
-            // Factor 2: Factor1 - e^(-t/L)
             const factor2 = factor1 - exp1;
-            
-            // Factor 3: ((1 - e^(-t/L2)) / (t/L2)) - e^(-t/L2)
             const factor3 = ((1 - exp2) / term2) - exp2;
 
             const modelYield = theta0 + (theta1 * factor1) + (theta2 * factor2) + (theta3 * factor3);
-            
             runningError += Math.pow(marketYield - modelYield, 2);
         }
 
@@ -169,16 +116,9 @@ const calculateNSSErrors = (values) => {
  */
 export async function getNSSParameters(env) {
     const values = await fetchMarketData(env);
-    
-    // Safety check for not enough data points
-    if (values.length < 6) {
-         throw new Error("Insufficient data points to fit NSS model (Minimum 6 required).");
-    }
 
     const calculateErrors = calculateNSSErrors(values);
 
-    // Nelder-Mead is an unconstrained solver, but our cost function now includes penalties
-    // that effectively act as bounds.
     const result = nelderMead(calculateErrors, [
         THETA0_SEARCH_START,
         THETA1_SEARCH_START,
@@ -203,6 +143,7 @@ export async function getNSSParameters(env) {
 
 /**
  * Calculates the annualized spot rate for a specific time T.
+ * Performs optimization first to ensure parameters are up to date with DB.
  * @param {number} t - Time in years.
  * @param {Object} env - Worker environment.
  * @returns {Promise<Object>} - The calculated spot rate and parameters used.
@@ -212,6 +153,7 @@ export async function calculateSpotRate(t, env) {
         throw new Error("Time T must be between 0 and 30 years.");
     }
 
+    // Get fresh parameters
     const params = await getNSSParameters(env);
 
     const b0 = params.theta0;
@@ -220,15 +162,6 @@ export async function calculateSpotRate(t, env) {
     const b3 = params.theta3;
     const t1 = params.lambda1;
     const t2 = params.lambda2;
-
-    // Handle t=0 edge case to avoid division by zero
-    if (t === 0) {
-        return {
-             t: 0,
-             spotRate: (b0 + b1) * 100,
-             parameters: params
-        };
-    }
 
     const term1 = t / t1;
     const term2 = t / t2;
