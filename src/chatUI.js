@@ -471,7 +471,7 @@ function getBody() {
                 <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8')">
                     <i class="fas fa-search" style="margin-right: 12px; width: 16px;"></i> Analyze CUSIP
                 </button>
-                <button class="suggestion-btn" onclick="sendMessage('Calculate dirty price for CUSIP 912810TN4')">
+                <button class="suggestion-btn" onclick="sendMessage('Calculate dirty price for CUSIP 91282CLS8')">
                     <i class="fas fa-calculator" style="margin-right: 12px; width: 16px;"></i> Price Calculator
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8 with settlement date of Dec 23, 2025')">
