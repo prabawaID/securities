@@ -208,7 +208,7 @@ function getYieldCurveTool() {
             properties: {
                 num_points: { 
                     type: 'number', 
-                    description: 'The number of points to display 30 years horizon. Must be between 0 and 100.' 
+                    description: 'The number of points to display 30 years horizon. Must be between 0 and 100. Optional, defaults to 100.' 
                 }
             },
             required: []
