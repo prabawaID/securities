@@ -329,6 +329,12 @@ function getBody() {
                 <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8 with settlement date of Dec 23, 2025')">
                     <i class="fas fa-calendar" style="margin-right: 8px;"></i> With Settlement Date
                 </button>
+                <button class="suggestion-btn" onclick="sendMessage('Show all issues for 91282CGH8')">
+                    <i class="fas fa-money-bill-1-wave" style="margin-right: 8px;"></i> All Issuances
+                </button>
+                <button class="suggestion-btn" onclick="sendMessage('Compare original vs latest issue for 912797QR1')">
+                    <i class="fas fa-code-compare" style="margin-right: 8px;"></i> Compare Issues
+                </button>
                 <button class="suggestion-btn" onclick="sendMessage('What are the initial NSS parameters?')">
                     <i class="fas fa-wave-square" style="margin-right: 8px;"></i> NSS Parameters
                 </button>
