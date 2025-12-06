@@ -211,7 +211,7 @@ function getYieldCurveTool() {
                     description: 'The number of points to display 30 years horizon. Must be between 0 and 100.' 
                 }
             },
-            required: ['num_points']
+            required: []
         }
     };
 }
