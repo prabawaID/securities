@@ -558,7 +558,7 @@ function getScript() {
                             <div class="data-grid">
                                 <div class="data-item">
                                     <label>Model RMSE</label>
-                                    <value>\${(result.parameters.rmse * 100).toFixed(4)}%</value>
+                                    <value>\${(result.parameters.squaredError * 100).toFixed(4)}%</value>
                                 </div>
                                 <div class="data-item">
                                     <label>Data Points</label>
@@ -595,7 +595,7 @@ function getScript() {
                             <div class="data-item"><label>Lambda 2 (Decay)</label><value>\${result.lambda2.toFixed(4)}</value></div>
                         </div>
                         <div style="margin-top: 10px; font-size: 0.8rem; color: #6B7280; border-top: 1px dashed #E5E7EB; padding-top: 8px;">
-                            Fit Error (SSE): \${result.squaredError.toFixed(6)} \${result.rmse ? ' | RMSE: ' + (result.rmse * 100).toFixed(4) + '%' : ''}
+                            Fit Error (SSE): \${result.squaredError.toFixed(6)} \${result.squaredError ? ' | RMSE: ' + (result.squaredError * 100).toFixed(4) + '%' : ''}
                         </div>
                         <div style="margin-top: 10px; font-size: 0.8rem; color: #6B7280; border-top: 1px dashed #E5E7EB; padding-top: 8px;">
                            Data Points: \${result.dataPoints}
