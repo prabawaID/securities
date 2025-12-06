@@ -492,7 +492,7 @@ function getBody() {
                     </button>
                     <div class="header-info">
                         <h2>Treasury Security AI Analyst</h2>
-                        <p>Powered by Cloudflare Workers AI</p>
+                        <p>Powered by Cloudflare Workers AI. Data source: <a href="https://www.treasurydirect.gov/">TreasuryDIrect</a> (as of Nov 18, 2025)</p>
                     </div>
                 </div>
                 <div style="color: #10B981; font-size: 0.875rem;">
