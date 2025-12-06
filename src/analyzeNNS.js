@@ -10,55 +10,6 @@ const THETA3_SEARCH_START =  0.01;  // -0.5% second hump
 const LAMBDA1_SEARCH_START = 1.50;
 const LAMBDA2_SEARCH_START = 3.00;
 
-// Nelson-Siegel-Svensson curve function
-async function nssCurve(tau, theta0, theta1, theta2, theta3, lambda1, lambda2) {
-    // Safeguard: prevent division by zero
-    // If tau is 0 or very close to 0, use a small positive value
-    if (tau < 0.0001) {
-        tau = 0.0001;
-    }
-    
-    // Also ensure lambdas are not zero
-    if (lambda1 <= 0) lambda1 = 0.1;
-    if (lambda2 <= 0) lambda2 = 0.1;
-    const term1 = theta0;
-    const term2 = theta1 * ((1 - Math.exp(-tau/lambda1)) / (tau/lambda1));
-    const term3 = theta2 * (((1 - Math.exp(-tau/lambda1)) / (tau/lambda1)) - Math.exp(-tau/lambda1));
-    const term4 = theta3 * (((1 - Math.exp(-tau/lambda2)) / (tau/lambda2)) - Math.exp(-tau/lambda2));
-    
-    return term1 + term2 + term3 + term4;
-}
-
-/**
- * Calculates the Sum of Squared Errors (SSE) between model and market yields.
- */
-const calculateNSSErrors = (values) => {
-    return (X) => {
-        const theta0 = X[0];
-        const theta1 = X[1];
-        const theta2 = X[2];
-        const theta3 = X[3];
-        const lambda1 = X[4];
-        const lambda2 = X[5];
-
-        // Constraint: Lambdas must be positive to ensure convergence
-        if (lambda1 <= 0.05 || lambda2 <= 0.05) {
-            return 1e9; // Penalty for invalid parameters
-        }
-
-        let runningError = 0;
-
-        for (let i = 0; i < values.length; i++) {
-            const t = values[i].term;
-            const marketYield = values[i].yield / 100;
-            const modelYield = nssCurve(t, theta0, theta1, theta2, theta3, lambda1, lambda2);
-            runningError += Math.pow(marketYield - modelYield, 2);
-        }
-
-        return runningError;
-    };
-};
-
 /**
  * Fetches security data from the DB and transforms it into yield curve terms.
  * @param {Object} env - The worker environment containing the DB binding.
@@ -119,6 +70,46 @@ async function fetchMarketData(env) {
 }
 
 /**
+ * Calculates the Sum of Squared Errors (SSE) between model and market yields.
+ */
+const calculateNSSErrors = (values) => {
+    return (X) => {
+        const theta0 = X[0];
+        const theta1 = X[1];
+        const theta2 = X[2];
+        const theta3 = X[3];
+        const lambda1 = X[4];
+        const lambda2 = X[5];
+
+        // Constraint: Lambdas must be positive to ensure convergence
+        if (lambda1 <= 0.05 || lambda2 <= 0.05) {
+            return 1e9; // Penalty for invalid parameters
+        }
+
+        let runningError = 0;
+
+        for (let i = 0; i < values.length; i++) {
+            const t = values[i].term;
+            const marketYield = values[i].yield / 100;
+
+            const term1 = t / lambda1;
+            const term2 = t / lambda2;
+            const exp1 = Math.exp(-term1);
+            const exp2 = Math.exp(-term2);
+
+            const factor1 = (1 - exp1) / term1;
+            const factor2 = factor1 - exp1;
+            const factor3 = ((1 - exp2) / term2) - exp2;
+
+            const modelYield = theta0 + (theta1 * factor1) + (theta2 * factor2) + (theta3 * factor3);
+            runningError += Math.pow(marketYield - modelYield, 2);
+        }
+
+        return runningError;
+    };
+};
+
+/**
  * Calculates the initial NSS parameters by fitting the curve to DB data.
  * @param {Object} env - Worker environment.
  * @returns {Promise<Object>} - The fitted parameters.
@@ -165,7 +156,23 @@ export async function calculateSpotRate(t, env) {
     // Get fresh parameters
     const params = await getNSSParameters(env);
 
-    const yieldDecimal = nssCurve(t, params.theta0, params.theta1, params.theta2, params.theta3, params.lambda1, params.lambda2);
+    const b0 = params.theta0;
+    const b1 = params.theta1;
+    const b2 = params.theta2;
+    const b3 = params.theta3;
+    const t1 = params.lambda1;
+    const t2 = params.lambda2;
+
+    const term1 = t / t1;
+    const term2 = t / t2;
+    const exp1 = Math.exp(-term1);
+    const exp2 = Math.exp(-term2);
+
+    const factor1 = (1 - exp1) / term1;
+    const factor2 = factor1 - exp1;
+    const factor3 = ((1 - exp2) / term2) - exp2;
+
+    const yieldDecimal = b0 + (b1 * factor1) + (b2 * factor2) + (b3 * factor3);
     const ratePercent = yieldDecimal * 100;
 
     return {
@@ -185,6 +192,7 @@ export async function getYieldCurve(numPoints = 100, env) {
     // Get fresh parameters
     const params = await getNSSParameters(env);
 
+
     // Generate curve points
     const minMaturity = 0.01;
     const maxMaturity = Math.max(...values.map(d => d.term));
@@ -192,19 +200,41 @@ export async function getYieldCurve(numPoints = 100, env) {
     
     const curve = [];
     for (let i = 0; i < numPoints; i++) {
-        const t = minMaturity + (i * step);
-        const yieldDecimal = nssCurve(t, params.theta0, params.theta1, params.theta2, params.theta3, params.lambda1, params.lambda2);
+        const maturity = minMaturity + (i * step);
+
+
+
+        const b0 = params.theta0;
+        const b1 = params.theta1;
+        const b2 = params.theta2;
+        const b3 = params.theta3;
+        const t1 = params.lambda1;
+        const t2 = params.lambda2;
+
+        const term1 = maturity / t1;
+        const term2 = maturity / t2;
+        const exp1 = Math.exp(-term1);
+        const exp2 = Math.exp(-term2);
+
+        const factor1 = (1 - exp1) / term1;
+        const factor2 = factor1 - exp1;
+        const factor3 = ((1 - exp2) / term2) - exp2;
+
+        const yieldDecimal = b0 + (b1 * factor1) + (b2 * factor2) + (b3 * factor3);
         const ratePercent = yieldDecimal * 100;
+
+
+
 
         // Validate the rate to catch any calculation errors
         if (!isFinite(ratePercent) || isNaN(ratePercent)) {
-            console.warn(`Invalid rate at maturity ${t}: ${ratePercent}`);
+            console.warn(`Invalid rate at maturity ${maturity}: ${ratePercent}`);
             // Skip invalid points rather than including nulls
             continue;
         }
 
         curve.push({
-            maturity: t,
+            maturity: maturity,
             rate: ratePercent
         });
     }
