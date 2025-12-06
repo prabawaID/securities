@@ -2,14 +2,14 @@
 export const nelderMead = (f, x0, parameters) => {
    parameters = parameters || {};
 
-   var maxIterations = parameters.maxIterations || 10000 // x0.length * 200,
+   var maxIterations = parameters.maxIterations || 10000, // x0.length * 200,
       nonZeroDelta = parameters.nonZeroDelta || 1.05,
       zeroDelta = parameters.zeroDelta || 0.001,
       minErrorDelta = parameters.minErrorDelta || 1e-6,
-      minTolerance = parameters.minErrorDelta || 1e-8 // 1e-5,
+      minTolerance = parameters.minErrorDelta || 1e-8, // 1e-5,
       rho = parameters.rho !== undefined ? parameters.rho : 1,
       chi = parameters.chi !== undefined ? parameters.chi : 2,
-      psi = parameters.psi !== undefined ? parameters.psi : 0.5 // -0.5,
+      psi = parameters.psi !== undefined ? parameters.psi : 0.5, // -0.5,
       sigma = parameters.sigma !== undefined ? parameters.sigma : 0.5,
       maxDiff;
 
