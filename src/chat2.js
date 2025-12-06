@@ -133,12 +133,6 @@ When a user asks for "NSS parameters", "curve parameters", or "fitted parameters
 When a user asks for a "spot rate" at a specific year/time (e.g. "7.5 year spot rate"), use 'get_spot_rate'.
 
 Always explain the result clearly. For spot rates, mention that it's derived from the NSS model fitted to current market data.
-
-IMPORTANT: Format your response using HTML tags for better readability.
-- Use <b> or <strong> for emphasis on key values.
-- Use <ul> and <li> for lists.
-- Use <p> for paragraphs.
-- Do not use Markdown syntax (like * or ** or #).`;
 }
 
 function getCusipAnalysisTool() {
