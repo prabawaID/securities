@@ -409,7 +409,7 @@ function getScript() {
                     addMessage('Error: ' + data.error, 'assistant', true);
                 } else {
                     let content = data.response;
-                    if (data.tool_used && data.tool_result) {
+                    if (data.tool_result) {
                         content = formatToolResult(data.tool_result, data.tool_name);
                     }
                     addMessage(content, 'assistant');
