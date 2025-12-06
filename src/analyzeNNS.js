@@ -183,7 +183,7 @@ export async function calculateSpotRate(t, env) {
 }
 
 export async function getYieldCurve(numPoints = 100, env) {
-    if (t < 0 || t > 100) {
+    if (numPoints < 0 || numPoints > 100) {
         throw new Error("Number of points must be between 0 and 100 years.");
     }
 
