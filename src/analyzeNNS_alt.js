@@ -10,6 +10,16 @@ class NSSCurveCalculator {
     
     // Nelson-Siegel-Svensson curve function
     nssCurve(tau, beta0, beta1, beta2, beta3, lambda1, lambda2) {
+        // Safeguard: prevent division by zero
+        // If tau is 0 or very close to 0, use a small positive value
+        if (tau < 0.0001) {
+            tau = 0.0001;
+        }
+        
+        // Also ensure lambdas are not zero
+        if (lambda1 <= 0) lambda1 = 0.1;
+        if (lambda2 <= 0) lambda2 = 0.1;
+
         const term1 = beta0;
         const term2 = beta1 * ((1 - Math.exp(-tau/lambda1)) / (tau/lambda1));
         const term3 = beta2 * (((1 - Math.exp(-tau/lambda1)) / (tau/lambda1)) - Math.exp(-tau/lambda1));
@@ -379,13 +389,22 @@ export async function getYieldCurve(numPoints = 100, env) {
     });
     
     // Generate curve points
+    const minMaturity = 0.01;
     const maxMaturity = Math.max(...marketData.map(d => d.term));
     const step = maxMaturity / (numPoints - 1);
     
     const curve = [];
     for (let i = 0; i < numPoints; i++) {
-        const maturity = i * step;
+        const maturity = minMaturity + (i * step);
         const rate = calculator.getSpotRate(maturity) * 100; // Convert to percentage
+
+        // Validate the rate to catch any calculation errors
+        if (!isFinite(rate) || isNaN(rate)) {
+            console.warn(`Invalid rate at maturity ${maturity}: ${rate}`);
+            // Skip invalid points rather than including nulls
+            continue;
+        }
+
         curve.push({
             maturity: maturity,
             rate: rate
@@ -406,10 +425,4 @@ export async function getYieldCurve(numPoints = 100, env) {
             dataPoints: marketData.length
         }
     };
-}
-
-export async function _getYieldCurve(env, numPoints = 100) {
-    return {
-        data: 'Still under construction...'
-    }
 }
