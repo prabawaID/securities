@@ -55,7 +55,7 @@ async function fetchMarketData(env) {
         let yieldVal;
         
         if (sec.security_type == 'MARKET BASED BILL')
-            yieldVal = parseFloat(sec.highInterestRate);
+            yieldVal = parseFloat(sec.highInvestmentRate);
         else
             yieldVal = parseFloat(sec.highYield);
 
