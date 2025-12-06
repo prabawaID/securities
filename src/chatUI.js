@@ -474,9 +474,6 @@ function getBody() {
                 <button class="suggestion-btn" onclick="sendMessage('Calculate dirty price for CUSIP 912810TN4')">
                     <i class="fas fa-calculator" style="margin-right: 12px; width: 16px;"></i> Price Calculator
                 </button>
-                <button class="suggestion-btn" onclick="sendMessage('Compare 2Y vs 10Y spread')">
-                    <i class="fas fa-chart-line" style="margin-right: 12px; width: 16px;"></i> Spread Analysis
-                </button>
                 <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8 with settlement date of Dec 23, 2025')">
                     <i class="fas fa-calendar" style="margin-right: 12px; width: 16px;"></i> Future Settlement
                 </button>
