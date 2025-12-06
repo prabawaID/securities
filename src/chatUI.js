@@ -794,7 +794,12 @@ function getScript() {
                 
                 let csvContent = "Maturity (Years),Yield (%)\\n";
                 labels.forEach((label, index) => {
-                    csvContent += label + "," + data[index].toFixed(4) + "\\n";
+                    const value = data[index];
+                    // Handle null/undefined values
+                    const formattedValue = (value !== null && value !== undefined) 
+                        ? value.toFixed(4) 
+                        : 'N/A';
+                    csvContent += label + "," + formattedValue + "\\n";
                 });
 
                 const blob = new Blob([csvContent], { type: 'text/csv' });
