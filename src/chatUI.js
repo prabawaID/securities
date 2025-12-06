@@ -503,15 +503,16 @@ function getScript() {
                     <div class="tool-header"><i class="fas fa-chart-area"></i> NSS Curve Model</div>
                     <div class="tool-body">
                         <div class="data-grid">
-                            <div class="data-item"><label>Theta 0 (Long-term)</label><value>\${result.theta0.toFixed(4)}</value></div>
-                            <div class="data-item"><label>Theta 1 (Short-term)</label><value>\${result.theta1.toFixed(4)}</value></div>
-                            <div class="data-item"><label>Theta 2 (Mid-term)</label><value>\${result.theta2.toFixed(4)}</value></div>
-                            <div class="data-item"><label>Theta 3 (Mid-term 2)</label><value>\${result.theta3.toFixed(4)}</value></div>
-                            <div class="data-item"><label>Lambda 1 (Decay)</label><value>\${result.lambda1.toFixed(4)}</value></div>
-                            <div class="data-item"><label>Lambda 2 (Decay)</label><value>\${result.lambda2.toFixed(4)}</value></div>
+                        <div class="data-grid">
+                            <div class="data-item"><label>β₀ (Long-term)</label><value>\${(result.theta0 * 100).toFixed(4)}%</value></div>
+                            <div class="data-item"><label>β₁ (Short-term)</label><value>\${(result.theta1 * 100).toFixed(4)}%</value></div>
+                            <div class="data-item"><label>β₂ (Mid-term)</label><value>\${(result.theta2 * 100).toFixed(4)}%</value></div>
+                            <div class="data-item"><label>β₃ (Mid-term 2)</label><value>\${(result.theta3 * 100).toFixed(4)}%</value></div>
+                            <div class="data-item"><label>λ₁ (Decay)</label><value>\${result.lambda1.toFixed(4)}</value></div>
+                            <div class="data-item"><label>λ₂ (Decay)</label><value>\${result.lambda2.toFixed(4)}</value></div>
                         </div>
                         <div style="margin-top: 10px; font-size: 0.8rem; color: #6B7280; border-top: 1px dashed #E5E7EB; padding-top: 8px;">
-                            Fit Error (SSE): \${result.squaredError.toFixed(6)} | Data Points: \${result.dataPoints}
+                            Fit Error (SSE): \${result.squaredError.toFixed(6)} | Data Points: \${result.dataPoints}\${result.rmse ? ' | RMSE: ' + (result.rmse * 100).toFixed(4) + '%' : ''}
                         </div>
                     </div>
                 </div>\`;
