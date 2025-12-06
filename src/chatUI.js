@@ -326,8 +326,8 @@ function getBody() {
                 <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8')">
                     <i class="fas fa-search" style="margin-right: 8px;"></i> Analyze CUSIP
                 </button>
-                <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8')">
-                    <i class="fas fa-calendar" style="margin-right: 8px;"></i> Analyze CUSIP with date
+                <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8 with settlement date of Dec 23, 2025')">
+                    <i class="fas fa-calendar" style="margin-right: 8px;"></i> With Settlement Date
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('What are the initial NSS parameters?')">
                     <i class="fas fa-wave-square" style="margin-right: 8px;"></i> NSS Parameters
