@@ -322,9 +322,12 @@ function getBody() {
             </div>
             
             <div class="suggestions">
-                <div style="font-size: 0.75rem; font-weight: 600; color: #9CA3AF; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Quick Actions</div>
+                <div style="font-size: 0.75rem; font-weight: 600; color: #9CA3AF; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Example Questions</div>
                 <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8')">
                     <i class="fas fa-search" style="margin-right: 8px;"></i> Analyze CUSIP
+                </button>
+                <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8')">
+                    <i class="fas fa-calendar" style="margin-right: 8px;"></i> Analyze CUSIP with date
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('What are the initial NSS parameters?')">
                     <i class="fas fa-wave-square" style="margin-right: 8px;"></i> NSS Parameters
