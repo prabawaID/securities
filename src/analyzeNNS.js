@@ -70,7 +70,7 @@ async function fetchMarketData(env) {
 }
 
 // Nelson-Siegel-Svensson curve function
-async function nssCurve(tau, theta0, theta1, theta2, theta3, lambda1, lambda2) {
+function nssCurve(tau, theta0, theta1, theta2, theta3, lambda1, lambda2) {
     // Safeguard: prevent division by zero
     // If tau is 0 or very close to 0, use a small positive value
     if (tau < 0.0001) {
@@ -176,7 +176,7 @@ export async function calculateSpotRate(t, env) {
     // Get fresh parameters
     const params = await getNSSParameters(env);
 
-    const yieldDecimal = await nssCurve(
+    const yieldDecimal = nssCurve(
         t,
         params.theta0,
         params.theta1,
@@ -218,7 +218,7 @@ export async function getYieldCurve(numPoints = 100, env) {
     for (let i = 0; i < numPoints; i++) {
         const t = minMaturity + (i * step);
 
-        const yieldDecimal = await nssCurve(
+        const yieldDecimal = nssCurve(
             t,
             params.theta0,
             params.theta1,
