@@ -535,7 +535,7 @@ function getScript() {
                 </div>\`;
             }
 
-            if (result && result.price_info) {
+            if (toolName === 'analyze_cusip' || (result && result.price_info)) {
                 // Default: analyze_cusip
                 const sec = result.price_info;
                 const pricing = result.pricing;
