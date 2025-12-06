@@ -3,12 +3,12 @@ import { nelderMead } from './nelderMead.js';
 // --- Configuration ---
 
 // Starting guesses for the NSS parameters
-const THETA0_SEARCH_START =  0.040;  // 4% long-term rate
-const THETA1_SEARCH_START = -0.020;  // -2% short-term component
-const THETA2_SEARCH_START =  0.010;  // 1% medium-term hump
-const THETA3_SEARCH_START = -0.005;  // -0.5% second hump
-const LAMBDA1_SEARCH_START = 1.000;
-const LAMBDA2_SEARCH_START = 1.000;
+const THETA0_SEARCH_START =  0.04;  // 4% long-term rate
+const THETA1_SEARCH_START = -0.01;  // -2% short-term component
+const THETA2_SEARCH_START = -0.01;  // 1% medium-term hump
+const THETA3_SEARCH_START =  0.01;  // -0.5% second hump
+const LAMBDA1_SEARCH_START = 1.50;
+const LAMBDA2_SEARCH_START = 3.00;
 
 /**
  * Fetches security data from the DB and transforms it into yield curve terms.
