@@ -409,8 +409,10 @@ function getScript() {
                     addMessage('Error: ' + data.error, 'assistant', true);
                 } else {
                     let content = data.response;
-                    let contentBox = formatToolResult(data.tool_result, data.tool_name);
-                    addMessage(contentBox, 'assistant');
+                    if (data.tool_result) {
+                        content = formatToolResult(data.tool_result, data.tool_name);
+                    }
+                    addMessage(content, 'assistant');
                     conversationHistory.push({ role: 'assistant', content: data.response });
                 }
             } catch (error) {
