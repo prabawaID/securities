@@ -204,49 +204,43 @@ export async function calculateSpotRate(t, env) {
 
 export async function getYieldCurve(numPoints = 100, env) {
     if (numPoints < 0 || numPoints > 100) {
-        throw new Error("Number of points must be between 0 and 100 years.");
+        throw new Error("Number of points must be between 0 and 100");
     }
 
-    const values = await fetchMarketData(env);
+    const marketData = await fetchMarketData(env);
 
     // Get fresh parameters
     const params = await getNSSParameters(env);
 
-
     // Generate curve points
     const minMaturity = 0.01;
-    const maxMaturity = Math.max(...values.map(d => d.term));
+    const maxMaturity = Math.max(...marketData.map(d => d.term));
     const step = maxMaturity / (numPoints - 1);
     
     const curve = [];
     for (let i = 0; i < numPoints; i++) {
-        const maturity = minMaturity + (i * step);
+        const t = minMaturity + (i * step);
 
-
-
-        const b0 = params.theta0;
-        const b1 = params.theta1;
-        const b2 = params.theta2;
-        const b3 = params.theta3;
-        const t1 = params.lambda1;
-        const t2 = params.lambda2;
-
-
-        const yieldDecimal = await nssCurve(maturity, b0, b1, b2, b3, t1, t2);
-        const ratePercent = yieldDecimal * 100;
-
-
-
+        const yieldDecimal = await nssCurve(
+            t,
+            params.theta0,
+            params.theta1,
+            params.theta2,
+            params.theta3,
+            params.lambda1,
+            params.lambda2);
 
         // Validate the rate to catch any calculation errors
-        if (!isFinite(ratePercent) || isNaN(ratePercent)) {
-            console.warn(`Invalid rate at maturity ${maturity}: ${ratePercent}`);
+        if (!isFinite(yieldDecimal) || isNaN(yieldDecimal)) {
+            console.warn(`Invalid yield at maturity ${t}: ${yieldDecimal}`);
             // Skip invalid points rather than including nulls
             continue;
         }
+ 
+        const ratePercent = yieldDecimal * 100;
 
         curve.push({
-            maturity: maturity,
+            maturity: t,
             rate: ratePercent
         });
     }
@@ -262,7 +256,7 @@ export async function getYieldCurve(numPoints = 100, env) {
             lambda2: params.lambda2,
             rmse: params.squaredError,
             iterations: params.iterations,
-            dataPoints: values.length
+            dataPoints: marketData.length
         }
     };
 }
