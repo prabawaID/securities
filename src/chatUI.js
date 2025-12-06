@@ -372,7 +372,7 @@ function getBody() {
                     <i class="fas fa-calculator" style="margin-right: 8px;"></i> Spot Rate Calc
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('Show me the yield curve')">
-                    <i class="fas fa-chart-line"></i> Show yield curve
+                    <i class="fas fa-chart-line" style="margin-right: 8px;"></i> Show yield curve
                 </button>
             </div>
         </div>
@@ -779,36 +779,59 @@ function getScript() {
             });
         }
 
-        function downloadChartData(chartId) {
+        // Make download functions globally accessible
+        window.downloadChartData = function(chartId) {
             const chart = chartInstances[chartId];
-            if (!chart) return;
+            if (!chart) {
+                console.error('Chart not found:', chartId);
+                alert('Chart not found. Please try again.');
+                return;
+            }
 
-            const data = chart.data.datasets[0].data;
-            const labels = chart.data.labels;
-            
-            let csvContent = "Maturity (Years),Yield (%)\\n";
-            labels.forEach((label, index) => {
-                csvContent += \`\${label},\${data[index].toFixed(4)}\\n\`;
-            });
+            try {
+                const data = chart.data.datasets[0].data;
+                const labels = chart.data.labels;
+                
+                let csvContent = "Maturity (Years),Yield (%)\\n";
+                labels.forEach((label, index) => {
+                    csvContent += label + "," + data[index].toFixed(4) + "\\n";
+                });
 
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'yield_curve_data.csv';
-            a.click();
-            URL.revokeObjectURL(url);
-        }
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'yield_curve_data.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Error downloading chart data:', error);
+                alert('Failed to download data: ' + error.message);
+            }
+        };
 
-        function downloadChartImage(chartId) {
+        window.downloadChartImage = function(chartId) {
             const chart = chartInstances[chartId];
-            if (!chart) return;
+            if (!chart) {
+                console.error('Chart not found:', chartId);
+                alert('Chart not found. Please try again.');
+                return;
+            }
 
-            const url = chart.toBase64Image();
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'yield_curve.png';
-            a.click();
-        }
+            try {
+                const url = chart.toBase64Image();
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'yield_curve.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } catch (error) {
+                console.error('Error downloading chart image:', error);
+                alert('Failed to download image: ' + error.message);
+            }
+        };
     `;
 }
