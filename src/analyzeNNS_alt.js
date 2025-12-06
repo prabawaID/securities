@@ -360,22 +360,30 @@ export async function calculateSpotRate(t, env) {
  * @returns {Promise<Object>} - Array of {maturity, rate} and parameters.
  */
 export async function getYieldCurve(env, numPoints = 100) {
-    //const marketData = await fetchMarketData(env);
+    const marketData = await fetchMarketData(env);
+
+    // Get fresh parameters
+    const params = await getNSSParameters(env);
     
-    //const calculator = new NSSCurveCalculator();
-    //calculator.loadData(marketData);
-    
-    //const params = calculator.fit();
+    // Create calculator instance with the fitted parameters
+    const calculator = new NSSCurveCalculator();
+    calculator.params = [
+        params.theta0,
+        params.theta1,
+        params.theta2,
+        params.theta3,
+        params.lambda1,
+        params.lambda2
+    ];
     
     // Generate curve points
-    //const maxMaturity = Math.max(...marketData.map(d => d.term));
-    //const step = maxMaturity / (numPoints - 1);
-    const step = 30 / (numPoints - 1)
+    const maxMaturity = Math.max(...marketData.map(d => d.term));
+    const step = maxMaturity / (numPoints - 1);
     
     const curve = [];
     for (let i = 0; i < numPoints; i++) {
         const maturity = i * step;
-        const rate = 2 * step // calculator.getSpotRate(maturity) * 100; // Convert to percentage
+        const rate = calculator.getSpotRate(maturity) * 100; // Convert to percentage
         curve.push({
             maturity: maturity,
             rate: rate
@@ -385,15 +393,15 @@ export async function getYieldCurve(env, numPoints = 100) {
     return {
         curve: curve,
         parameters: {
-            //theta0: params.beta0,
-            //theta1: params.beta1,
-            //theta2: params.beta2,
-            //theta3: params.beta3,
-            //lambda1: params.lambda1,
-            //lambda2: params.lambda2,
-            //rmse: params.rmse,
-            //iterations: params.iterations,
-            //dataPoints: marketData.length
+            theta0: params.beta0,
+            theta1: params.beta1,
+            theta2: params.beta2,
+            theta3: params.beta3,
+            lambda1: params.lambda1,
+            lambda2: params.lambda2,
+            rmse: params.rmse,
+            iterations: params.iterations,
+            dataPoints: marketData.length
         }
     };
 }
