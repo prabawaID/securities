@@ -20,8 +20,17 @@ async function fetchMarketData(env) {
     // We assume the 'securities' table contains active issues.
     // We use the interestRate as the yield proxy (assuming par for simplicity in this context,
     // or that the table data represents the yield curve points).
-    const { results } = await env.DB.prepare(
-        'SELECT maturityDate, highYield FROM securities WHERE maturityDate IS NOT NULL AND highYield IS NOT NULL'
+    const { results } = await env.DB.prepare(' \
+        SELECT p.cusip, p.security_type, s.highYield, s.highInvestmentRate, s.maturityDate \
+        FROM ( \
+            SELECT \
+                *, \
+                ROW_NUMBER() OVER (PARTITION BY cusip ORDER BY issueDate DESC) as rn \
+            FROM securities \
+            ) s, prices p \
+        WHERE \
+            s.cusip = p.cusip AND \
+            rn = 1'
     ).all();
 
     if (!results || results.length === 0) {
@@ -43,7 +52,13 @@ async function fetchMarketData(env) {
         if (term <= 0.001) continue;
 
         // Ensure yield is a number (handle string inputs if DB returns strings)
-        let yieldVal = parseFloat(sec.highYield);
+        let yieldVal;
+        
+        if (sec.security_type == 'MARKET BASED BILL')
+            yieldVal = parseFloat(sec.highInterestRate);
+        else
+            yieldVal = parseFloat(sec.highYield);
+
         if (isNaN(yieldVal)) continue;
 
         marketData.push({ term: term, yield: yieldVal });
