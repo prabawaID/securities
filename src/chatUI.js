@@ -229,6 +229,41 @@ function getStyles() {
             color: var(--text-primary);
         }
 
+        /* Chart Container */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.5rem;
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px dashed #e5e7eb;
+        }
+
+        .chart-btn {
+            padding: 0.5rem 1rem;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .chart-btn:hover {
+            background: #eef2ff;
+            border-color: #4F46E5;
+            color: #4F46E5;
+        }
+
         /* Input Area */
         .input-area {
             padding: 1.5rem 2rem;
@@ -336,7 +371,7 @@ function getBody() {
                 <button class="suggestion-btn" onclick="sendMessage('What is the 7.5 year spot rate?')">
                     <i class="fas fa-calculator" style="margin-right: 8px;"></i> Spot Rate Calc
                 </button>
-                <button class="suggestion-btn" onclick="sendSuggestion('Show me the yield curve')">
+                <button class="suggestion-btn" onclick="sendMessage('Show me the yield curve')">
                     <i class="fas fa-chart-line"></i> Show yield curve
                 </button>
             </div>
