@@ -512,7 +512,10 @@ function getScript() {
                             <div class="data-item"><label>λ₂ (Decay)</label><value>\${result.lambda2.toFixed(2)}</value></div>
                         </div>
                         <div style="margin-top: 10px; font-size: 0.8rem; color: #6B7280; border-top: 1px dashed #E5E7EB; padding-top: 8px;">
-                            Fit Error (SSE): \${result.squaredError.toFixed(6)} | Data Points: \${result.dataPoints}\${result.rmse ? ' | RMSE: ' + (result.rmse * 100).toFixed(4) + '%' : ''}
+                            Fit Error (SSE): \${result.squaredError.toFixed(6)} | Data Points: \${result.dataPoints}
+                        </div>
+                        <div style="margin-top: 10px; font-size: 0.8rem; color: #6B7280; border-top: 1px dashed #E5E7EB; padding-top: 8px;">
+                            \${result.rmse ? ' | RMSE: ' + (result.rmse * 100).toFixed(4) + '%' : ''}
                         </div>
                     </div>
                 </div>\`;
