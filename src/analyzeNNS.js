@@ -198,7 +198,7 @@ export async function getYieldCurve(numPoints = 100, env) {
 
         // Validate the rate to catch any calculation errors
         if (!isFinite(ratePercent) || isNaN(ratePercent)) {
-            console.warn(`Invalid rate at maturity ${maturity}: ${ratePercent}`);
+            console.warn(`Invalid rate at maturity ${t}: ${ratePercent}`);
             // Skip invalid points rather than including nulls
             continue;
         }
