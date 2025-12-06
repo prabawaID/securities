@@ -419,6 +419,7 @@ function getScript() {
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
         const conversationHistory = [];
+        let chartInstances = {};
 
         chatForm.addEventListener('submit', (e) => {
             e.preventDefault();
