@@ -465,7 +465,7 @@ function getBody() {
                 <button class="suggestion-btn" onclick="sendMessage('What is the 7.5 year spot rate?')">
                     <i class="fas fa-chart-line" style="margin-right: 12px; width: 16px;"></i> Spot Rate Calc
                 </button>
-                <button class="suggestion-btn" onclick="sendMessage('What are the initial NSS parameters?')">
+                <button class="suggestion-btn" onclick="sendMessage('What are the fitted NSS parameters?')">
                     <i class="fas fa-wave-square" style="margin-right: 12px; width: 16px;"></i> NSS Parameters
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8')">
