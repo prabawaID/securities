@@ -6,6 +6,7 @@ export function getChatbotHTML() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Treasury Security AI Analyst</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>${getStyles()}</style>
 </head>
 <body>
@@ -228,6 +229,41 @@ function getStyles() {
             color: var(--text-primary);
         }
 
+        /* Chart Container */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.5rem;
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px dashed #e5e7eb;
+        }
+
+        .chart-btn {
+            padding: 0.5rem 1rem;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .chart-btn:hover {
+            background: #eef2ff;
+            border-color: #4F46E5;
+            color: #4F46E5;
+        }
+
         /* Input Area */
         .input-area {
             padding: 1.5rem 2rem;
@@ -334,6 +370,9 @@ function getBody() {
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('What is the 7.5 year spot rate?')">
                     <i class="fas fa-calculator" style="margin-right: 8px;"></i> Spot Rate Calc
+                </button>
+                <button class="suggestion-btn" onclick="sendMessage('Show me the yield curve')">
+                    <i class="fas fa-chart-line"></i> Show yield curve
                 </button>
             </div>
         </div>
@@ -498,6 +537,50 @@ function getScript() {
                 </div>\`;
             }
 
+            // Handle yield curve visualization
+            if (toolName === 'get_yield_curve' || (result && result.curve && Array.isArray(result.curve))) {
+                const chartId = 'chart-' + Date.now();
+                
+                setTimeout(() => {
+                    createYieldCurveChart(chartId, result);
+                }, 100);
+                
+                return \`<div class="tool-card">
+                    <div class="tool-header">
+                        <i class="fas fa-chart-area"></i> Treasury Yield Curve
+                    </div>
+                    <div class="tool-body">
+                        <div class="chart-container">
+                            <canvas id="\${chartId}"></canvas>
+                        </div>
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #e5e7eb;">
+                            <div class="data-grid">
+                                <div class="data-item">
+                                    <label>Model RMSE</label>
+                                    <value>\${(result.parameters.rmse * 100).toFixed(4)}%</value>
+                                </div>
+                                <div class="data-item">
+                                    <label>Data Points</label>
+                                    <value>\${result.parameters.dataPoints}</value>
+                                </div>
+                                <div class="data-item">
+                                    <label>Iterations</label>
+                                    <value>\${result.parameters.iterations}</value>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-controls">
+                            <button class="chart-btn" onclick="downloadChartData('\${chartId}')">
+                                <i class="fas fa-download"></i> Download Data
+                            </button>
+                            <button class="chart-btn" onclick="downloadChartImage('\${chartId}')">
+                                <i class="fas fa-image"></i> Save as Image
+                            </button>
+                        </div>
+                    </div>
+                </div>\`;
+            }
+
             if (toolName === 'get_nss_parameters' || (result && result.theta0 !== undefined)) {
                 return \`<div class="tool-card">
                     <div class="tool-header"><i class="fas fa-chart-area"></i> NSS Curve Model</div>
@@ -582,6 +665,149 @@ function getScript() {
                     </div>
                 </div>\`;
             }
+        }
+
+        function createYieldCurveChart(chartId, data) {
+            const ctx = document.getElementById(chartId);
+            if (!ctx) return;
+
+            // Destroy existing chart if it exists
+            if (chartInstances[chartId]) {
+                chartInstances[chartId].destroy();
+            }
+
+            const chartData = {
+                labels: data.curve.map(point => point.maturity.toFixed(2)),
+                datasets: [{
+                    label: 'Yield Curve (%)',
+                    data: data.curve.map(point => point.rate),
+                    borderColor: '#4F46E5',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    pointHoverBackgroundColor: '#4F46E5',
+                    pointHoverBorderColor: '#ffffff',
+                    pointHoverBorderWidth: 2
+                }]
+            };
+
+            chartInstances[chartId] = new Chart(ctx, {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: { size: 12, weight: '600' },
+                                color: '#374151',
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#4F46E5',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                title: (context) => {
+                                    return 'Maturity: ' + parseFloat(context[0].label).toFixed(2) + ' years';
+                                },
+                                label: (context) => {
+                                    return 'Yield: ' + context.parsed.y.toFixed(3) + '%';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time to Maturity (Years)',
+                                color: '#374151',
+                                font: { size: 12, weight: '600' }
+                            },
+                            grid: {
+                                color: '#f3f4f6',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 10,
+                                color: '#6B7280',
+                                font: { size: 11 }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Yield (%)',
+                                color: '#374151',
+                                font: { size: 12, weight: '600' }
+                            },
+                            grid: {
+                                color: '#f3f4f6',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#6B7280',
+                                font: { size: 11 },
+                                callback: function(value) {
+                                    return value.toFixed(2) + '%';
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        function downloadChartData(chartId) {
+            const chart = chartInstances[chartId];
+            if (!chart) return;
+
+            const data = chart.data.datasets[0].data;
+            const labels = chart.data.labels;
+            
+            let csvContent = "Maturity (Years),Yield (%)\\n";
+            labels.forEach((label, index) => {
+                csvContent += \`\${label},\${data[index].toFixed(4)}\\n\`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'yield_curve_data.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadChartImage(chartId) {
+            const chart = chartInstances[chartId];
+            if (!chart) return;
+
+            const url = chart.toBase64Image();
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'yield_curve.png';
+            a.click();
         }
     `;
 }

@@ -359,13 +359,24 @@ export async function calculateSpotRate(t, env) {
  * @param {number} numPoints - Number of points to generate (default: 100).
  * @returns {Promise<Object>} - Array of {maturity, rate} and parameters.
  */
-export async function getYieldCurve(env, numPoints = 100) {
+export async function getYieldCurve(numPoints = 100, env) {
     const marketData = await fetchMarketData(env);
     
     const calculator = new NSSCurveCalculator();
     calculator.loadData(marketData);
     
-    const params = calculator.fit();
+    const params = calculator.fit({
+        initial: [
+            THETA0_SEARCH_START,
+            THETA1_SEARCH_START,
+            THETA2_SEARCH_START,
+            THETA3_SEARCH_START,
+            LAMBDA1_SEARCH_START,
+            LAMBDA2_SEARCH_START,
+        ],
+        maxIter: 10000,
+        tol: 1e-8
+    });
     
     // Generate curve points
     const maxMaturity = Math.max(...marketData.map(d => d.term));
