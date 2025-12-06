@@ -49,7 +49,7 @@ async function fetchMarketData(env) {
         const term = diffTime / (1000 * 60 * 60 * 24 * 365.25);
 
         // Filter out expired or extremely short-term bonds if necessary
-        if (term <= 0.001) continue;
+        if (term < 0.000) continue;
 
         // Ensure yield is a number (handle string inputs if DB returns strings)
         let yieldVal;
