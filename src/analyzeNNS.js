@@ -232,7 +232,7 @@ export async function getYieldCurve(numPoints = 100, env) {
         const t2 = params.lambda2;
 
 
-        const yieldDecimal = nssCurve(maturity, b0, b1, b2, b3, t1, t2);
+        const yieldDecimal = await nssCurve(maturity, b0, b1, b2, b3, t1, t2);
         const ratePercent = yieldDecimal * 100;
 
 
