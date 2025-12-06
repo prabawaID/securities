@@ -69,6 +69,26 @@ async function fetchMarketData(env) {
     return marketData;
 }
 
+// Nelson-Siegel-Svensson curve function
+async function nssCurve(tau, theta0, theta1, theta2, theta3, lambda1, lambda2) {
+    // Safeguard: prevent division by zero
+    // If tau is 0 or very close to 0, use a small positive value
+    if (tau < 0.0001) {
+        tau = 0.0001;
+    }
+    
+    // Also ensure lambdas are not zero
+    if (lambda1 <= 0) lambda1 = 0.1;
+    if (lambda2 <= 0) lambda2 = 0.1;
+
+    const term1 = theta0;
+    const term2 = theta1 * ((1 - Math.exp(-tau/lambda1)) / (tau/lambda1));
+    const term3 = theta2 * (((1 - Math.exp(-tau/lambda1)) / (tau/lambda1)) - Math.exp(-tau/lambda1));
+    const term4 = theta3 * (((1 - Math.exp(-tau/lambda2)) / (tau/lambda2)) - Math.exp(-tau/lambda2));
+    
+    return term1 + term2 + term3 + term4;
+}
+
 /**
  * Calculates the Sum of Squared Errors (SSE) between model and market yields.
  */
@@ -211,16 +231,8 @@ export async function getYieldCurve(numPoints = 100, env) {
         const t1 = params.lambda1;
         const t2 = params.lambda2;
 
-        const term1 = maturity / t1;
-        const term2 = maturity / t2;
-        const exp1 = Math.exp(-term1);
-        const exp2 = Math.exp(-term2);
 
-        const factor1 = (1 - exp1) / term1;
-        const factor2 = factor1 - exp1;
-        const factor3 = ((1 - exp2) / term2) - exp2;
-
-        const yieldDecimal = b0 + (b1 * factor1) + (b2 * factor2) + (b3 * factor3);
+        const yieldDecimal = nssCurve(maturity, b0, b1, b2, b3, t1, t2);
         const ratePercent = yieldDecimal * 100;
 
 
