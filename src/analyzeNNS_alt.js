@@ -360,7 +360,6 @@ export async function calculateSpotRate(t, env) {
  * @returns {Promise<Object>} - Array of {maturity, rate} and parameters.
  */
 export async function getYieldCurve(env, numPoints = 100) {
-    const marketData = await fetchMarketData(env);
 
     // Get fresh parameters
     const params = await getNSSParameters(env);
@@ -377,7 +376,7 @@ export async function getYieldCurve(env, numPoints = 100) {
     ];
     
     // Generate curve points
-    const maxMaturity = Math.max(...marketData.map(d => d.term));
+    const maxMaturity = 30;
     const step = maxMaturity / (numPoints - 1);
     
     const curve = [];
