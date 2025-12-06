@@ -457,19 +457,19 @@ function getBody() {
                 <div style="font-size: 0.75rem; font-weight: 600; color: #9CA3AF; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">Example Questions</div>
 
                 <button class="suggestion-btn" onclick="sendMessage('What is the current 10-year Treasury yield?')">
-                    <i class="fas fa-chart-bar"></i> 10-Year Yield Analysis
+                    <i class="fas fa-chart-bar" style="margin-right: 12px; width: 16px;"></i> 10-Year Yield Analysis
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('Show me the yield curve for today')">
-                    <i class="fas fa-chart-area"></i> Current Yield Curve
+                    <i class="fas fa-chart-area" style="margin-right: 12px; width: 16px;"></i> Current Yield Curve
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('Calculate dirty price for CUSIP 912810TN4')">
-                    <i class="fas fa-calculator"></i> Price Calculator
+                    <i class="fas fa-calculator" style="margin-right: 12px; width: 16px;"></i> Price Calculator
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('Compare 2Y vs 10Y spread')">
-                    <i class="fas fa-chart-line"></i> Spread Analysis
+                    <i class="fas fa-chart-line" style="margin-right: 12px; width: 16px;"></i> Spread Analysis
                 </button>
                 <button class="suggestion-btn" onclick="sendMessage('Explain the NSS model parameters')">
-                    <i class="fas fa-info-circle"></i> NSS Model Info
+                    <i class="fas fa-info-circle" style="margin-right: 12px; width: 16px;"></i> NSS Model Info
                 </button>
 
                 <button class="suggestion-btn" onclick="sendMessage('Analyze CUSIP 91282CGH8')">
