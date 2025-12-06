@@ -359,7 +359,7 @@ export async function calculateSpotRate(t, env) {
  * @param {number} numPoints - Number of points to generate (default: 100).
  * @returns {Promise<Object>} - Array of {maturity, rate} and parameters.
  */
-export async function _getYieldCurve(env, numPoints = 100) {
+export async function getYieldCurve(env, numPoints = 100) {
     const marketData = await fetchMarketData(env);
     
     const calculator = new NSSCurveCalculator();
@@ -397,7 +397,7 @@ export async function _getYieldCurve(env, numPoints = 100) {
     };
 }
 
-export async function getYieldCurve(env, numPoints = 100) {
+export async function _getYieldCurve(env, numPoints = 100) {
     return {
         data: 'Still under construction...'
     }

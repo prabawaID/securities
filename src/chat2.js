@@ -118,7 +118,7 @@ async function handleChat(request, env) {
     } catch (error) {
         return Response.json({
             error: error.message,
-            ...(env.ENVIRONMENT === 'development' && { stack: error.stack })
+            stack: error.stack //...(env.ENVIRONMENT === 'development' && { stack: error.stack })
         }, {
             status: 500,
             headers: { 'Access-Control-Allow-Origin': '*' }
