@@ -493,7 +493,14 @@ function getBody() {
                 <div class="message assistant">
                     <div class="avatar bot-avatar"><i class="fas fa-robot"></i></div>
                     <div class="message-content">
-                        Hello! I'm your Treasury Security analysis assistant. I can help you analyze CUSIPs, calculate accrued interest, or fit the Nelson-Siegel-Svensson yield curve. How can I help you today?
+                        👋 Welcome! I'm your Treasury Security AI Analyst. I can help you with:
+                        <br><br>
+                        • Real-time yield curve analysis using NSS models<br>
+                        • CUSIP-based security pricing and calculations<br>
+                        • Accrued interest and dirty price computations<br>
+                        • Treasury market insights and analytics
+                        <br><br>
+                        What would you like to explore today?
                     </div>
                 </div>
             </div>
