@@ -1,72 +1,18 @@
 import { nelderMead } from './nelderMead.js';
 
-// --- Configuration ---
-
-// Starting guesses for the NSS parameters
-const THETA0_SEARCH_START =  0.04;  // 4% long-term rate
-const THETA1_SEARCH_START = -0.01;  // -2% short-term component
-const THETA2_SEARCH_START = -0.01;  // 1% medium-term hump
-const THETA3_SEARCH_START =  0.01;  // -0.5% second hump
+/**
+ * Starting guesses for the NSS parameters
+ */
+const THETA0_SEARCH_START =  0.04;  //  4% long-term rate
+const THETA1_SEARCH_START = -0.01;  // -1% short-term component
+const THETA2_SEARCH_START = -0.01;  // -1% medium-term hump
+const THETA3_SEARCH_START =  0.01;  //  1% second hump
 const LAMBDA1_SEARCH_START = 1.50;
 const LAMBDA2_SEARCH_START = 3.00;
 
 /**
- * Fetches security data from the DB and transforms it into yield curve terms.
- * @param {Object} env - The worker environment containing the DB binding.
- * @returns {Promise<Array>} - Array of { term: number, yield: number }
+ * Nelson-Siegel-Svensson curve function
  */
-async function fetchMarketData(env) {
-    // We assume the 'securities' table only contains bills, notes, and bonds.
-    const { results } = await env.DB.prepare(`
-        SELECT p.cusip, p.security_type, s.highYield, s.highInvestmentRate, s.maturityDate
-        FROM (
-            SELECT
-                *,
-                ROW_NUMBER() OVER (PARTITION BY cusip ORDER BY issueDate DESC) as rn
-            FROM securities
-        ) s, prices p
-        WHERE
-            s.cusip = p.cusip AND
-            rn = 1
-    `).all();
-
-    if (!results || results.length === 0) {
-        throw new Error("No security data available to build yield curve.");
-    }
-
-    const today = new Date();
-    const marketData = [];
-
-    for (const sec of results) {
-        const maturity = new Date(sec.maturityDate);
-        if (isNaN(maturity.getTime())) continue;
-
-        // Calculate time to maturity in years (ACT/365 approximation for curve fitting)
-        const diffTime = maturity - today;
-        const term = diffTime / (1000 * 60 * 60 * 24 * 365.25);
-
-        // Filter out expired or extremely short-term bonds if necessary
-        if (term < 0.000) continue;
-
-        // Ensure yield is a number (handle string inputs if DB returns strings)
-        let yieldVal;
-        
-        if (sec.security_type == 'MARKET BASED BILL')
-            yieldVal = parseFloat(sec.highInvestmentRate);
-        else
-            yieldVal = parseFloat(sec.highYield);
-
-        if (isNaN(yieldVal)) continue;
-
-        marketData.push({ term: term, yield: yieldVal });
-    }
-
-    // Sort by term
-    marketData.sort((a, b) => a.term - b.term);
-    return marketData;
-}
-
-// Nelson-Siegel-Svensson curve function
 function nssCurve(tau, theta0, theta1, theta2, theta3, lambda1, lambda2) {
     // Safeguard: prevent division by zero
     // If tau is 0 or very close to 0, use a small positive value
@@ -124,6 +70,62 @@ const calculateNSSErrors = (values) => {
         return runningError;
     };
 };
+
+/**
+ * Fetches security data from the DB and transforms it into yield curve terms.
+ * @param {Object} env - The worker environment containing the DB binding.
+ * @returns {Promise<Array>} - Array of { term: number, yield: number }
+ */
+async function fetchMarketData(env) {
+    // We assume the 'securities' table only contains bills, notes, and bonds.
+    const { results } = await env.DB.prepare(`
+        SELECT p.cusip, p.security_type, s.highYield, s.highInvestmentRate, s.maturityDate
+        FROM (
+            SELECT
+                *,
+                ROW_NUMBER() OVER (PARTITION BY cusip ORDER BY issueDate DESC) as rn
+            FROM securities
+        ) s, prices p
+        WHERE
+            s.cusip = p.cusip AND
+            rn = 1
+    `).all();
+
+    if (!results || results.length === 0) {
+        throw new Error("No security data available to build yield curve.");
+    }
+
+    const today = new Date();
+    const marketData = [];
+
+    for (const sec of results) {
+        const maturity = new Date(sec.maturityDate);
+        if (isNaN(maturity.getTime())) continue;
+
+        // Calculate time to maturity in years (ACT/365 approximation for curve fitting)
+        const diffTime = maturity - today;
+        const term = diffTime / (1000 * 60 * 60 * 24 * 365.25);
+
+        // Filter out expired or extremely short-term bonds if necessary
+        if (term < 0.000) continue;
+
+        // Ensure yield is a number (handle string inputs if DB returns strings)
+        let yieldVal;
+        
+        if (sec.security_type == 'MARKET BASED BILL')
+            yieldVal = parseFloat(sec.highInvestmentRate);
+        else
+            yieldVal = parseFloat(sec.highYield);
+
+        if (isNaN(yieldVal)) continue;
+
+        marketData.push({ term: term, yield: yieldVal });
+    }
+
+    // Sort by term
+    marketData.sort((a, b) => a.term - b.term);
+    return marketData;
+}
 
 /**
  * Calculates the initial NSS parameters by fitting the curve to DB data.
@@ -240,16 +242,6 @@ export async function getYieldCurve(numPoints = 100, env) {
     
     return {
         curve: curve,
-        parameters: {
-            theta0: params.theta0,
-            theta1: params.theta1,
-            theta2: params.theta2,
-            theta3: params.theta3,
-            lambda1: params.lambda1,
-            lambda2: params.lambda2,
-            rmse: params.squaredError,
-            iterations: params.iterations,
-            dataPoints: marketData.length
-        }
+        parameters: params
     };
 }
