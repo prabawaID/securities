@@ -16,10 +16,7 @@ const LAMBDA2_SEARCH_START = 3.00;
  * @returns {Promise<Array>} - Array of { term: number, yield: number }
  */
 async function fetchMarketData(env) {
-    // We select securities that have a valid interest rate and maturity date.
-    // We assume the 'securities' table contains active issues.
-    // We use the interestRate as the yield proxy (assuming par for simplicity in this context,
-    // or that the table data represents the yield curve points).
+    // We assume the 'securities' table only contains bills, notes, and bonds.
     const { results } = await env.DB.prepare(`
         SELECT p.cusip, p.security_type, s.highYield, s.highInvestmentRate, s.maturityDate
         FROM (
@@ -114,12 +111,12 @@ const calculateNSSErrors = (values) => {
 
             const modelYield = nssCurve(
                 t,
-                params.theta0,
-                params.theta1,
-                params.theta2,
-                params.theta3,
-                params.lambda1,
-                params.lambda2);
+                theta0,
+                theta1,
+                theta2,
+                theta3,
+                lambda1,
+                lambda2);
 
             runningError += Math.pow(marketYield - modelYield, 2);
         }
