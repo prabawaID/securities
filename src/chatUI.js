@@ -410,7 +410,7 @@ function getScript() {
                 } else {
                     let content = data.response;
                     if (data.tool_result) {
-                        content = formatToolResult(data.tool_result, data.tool_name);
+                        content += formatToolResult(data.tool_result, data.tool_name);
                     }
                     addMessage(content, 'assistant');
                     conversationHistory.push({ role: 'assistant', content: data.response });
