@@ -267,7 +267,7 @@ export async function calculateSpotRate(t, params) {
     };
 }
 
-export async function getYieldCurve(numPoints = 100, params) {
+export async function getYieldCurve(numPoints = 100, params, env) {
     if (numPoints < 0 || numPoints > 100) {
         throw new Error("Number of points must be between 0 and 100");
     }

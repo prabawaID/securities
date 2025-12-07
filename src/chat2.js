@@ -75,7 +75,8 @@ async function handleChat(request, env) {
             }else if (toolName === 'get_yield_curve') {
                 toolResult = await getYieldCurve(
                     toolCall.arguments.num_points,
-                    params
+                    params,
+                    env
                 );
             }
 
