@@ -193,7 +193,7 @@ export async function getNSSParameters(env) {
 
     // For creating yield curve graph
     const allTerms = values.flatMap(b => b.cashflows.map(c => c.term));
-    maxMaturity = Math.max(...allTerms);
+    const maxMaturity = Math.max(...allTerms);
 
     const calculateErrors = calculateNSSErrors(values);
 
