@@ -41,7 +41,7 @@ const calculateNSSErrors = (bonds) => {
         const [theta0, theta1, theta2, theta3, lambda1, lambda2] = X;
 
         // Constraints: Lambdas must be positive
-        if (lambda1 <= 0.1 || lambda2 <= 0.1) return 1e9;
+        if (lambda1 <= 0.1 || lambda2 <= 0.1) return 0.1 // 1e9;
 
         let totalError = 0;
 

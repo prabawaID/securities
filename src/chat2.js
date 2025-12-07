@@ -118,6 +118,7 @@ async function handleChat(request, env) {
         });
 
     } catch (error) {
+        console.error('Chat error:', error); // Add logging
         return Response.json({
             error: error.message,
             ...(env.ENVIRONMENT === 'development' && { stack: error.stack })
@@ -204,7 +205,7 @@ function getSpotRateTool() {
 function getYieldCurveTool() {
     return {
         name: 'get_yield_curve',
-        description: 'Show yield curve graph across a number of points.',
+        description: 'Generate yield curve data points.',
         parameters: {
             type: 'object',
             properties: {
