@@ -1,15 +1,15 @@
-function parseDate(dateStr) {
+export function parseDate(dateStr) {
     if (!dateStr) return null;
     if (dateStr.includes('T')) return new Date(dateStr.split('T')[0]);
     return new Date(dateStr);
 }
 
-function formatDate(date) {
+export function formatDate(date) {
     if (!date || !(date instanceof Date)) return 'null';
     return date.toISOString().split('T')[0];
 }
 
-function addMonths(date, months) {
+export function addMonths(date, months) {
     /**
      * Add months to a date, handling end-of-month edge cases
      */
@@ -27,7 +27,7 @@ function addMonths(date, months) {
     return result;
 }
 
-function subtractMonths(date, months) {
+export function subtractMonths(date, months) {
     const result = new Date(date);
     const originalDay = result.getDate();
 
@@ -42,7 +42,7 @@ function subtractMonths(date, months) {
     return result;
 }
 
-function daysBetween(date1, date2) {
+export function daysBetween(date1, date2) {
     if (!(date1 instanceof Date) || !(date2 instanceof Date)) {
         throw new Error('Both arguments must be Date objects');
     }
@@ -65,7 +65,7 @@ function getNextBusinessDay(date) {
     return next;
 }
 
-function isBusinessDay(date) {
+export function isBusinessDay(date) {
     /**
      * Check if a date is a business day (not weekend or holiday)
      */
