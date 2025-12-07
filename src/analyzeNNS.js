@@ -41,7 +41,7 @@ const calculateNSSErrors = (bonds) => {
         const [theta0, theta1, theta2, theta3, lambda1, lambda2] = X;
 
         // Constraints: Lambdas must be positive
-        if (lambda1 <= 0.1 || lambda2 <= 0.1) return 0.1 // 1e9;
+        if (lambda1 <= 0.1 || lambda2 <= 0.1) return 1e9;
 
         let totalError = 0;
 
@@ -168,7 +168,13 @@ function generateCashflowsAndPrice(sec, today) {
                 newYear += 1;
             }
             
-            nextPaymentDate = new Date(newYear, newMonth, paymentDay);
+            // Create date with day 1 first
+            let tempDate = new Date(newYear, newMonth, 1);
+            // Get last day of this month
+            let lastDay = new Date(newYear, newMonth + 1, 0).getDate();
+            // Use the smaller of paymentDay or lastDay
+            nextPaymentDate = new Date(newYear, newMonth, Math.min(paymentDay, lastDay));
+
         }
 
         cashflows.push({
@@ -180,11 +186,30 @@ function generateCashflowsAndPrice(sec, today) {
 
         // Calculate accrued interest by finding the last coupon payment date
         let periodStart = new Date(maturity);
+        const periodDay = periodStart.getDate();
+        const monthsToSubtract = 12 / frequency;
+
         // Work backward from maturity to find the period containing today
+        const issueDate = new Date(sec.issueDate);
         while (periodStart > today) {
-            periodStart.setMonth(periodStart.getMonth() - (12/frequency));
+            let newMonth = periodStart.getMonth() - monthsToSubtract;
+            let newYear = periodStart.getFullYear();
+            
+            while (newMonth < 0) {
+                newMonth += 12;
+                newYear -= 1;
+            }
+            
+            let newPeriodStart = new Date(newYear, newMonth, Math.min(periodDay, new Date(newYear, newMonth + 1, 0).getDate()));
+    
+            // Don't go before issue date
+            if (newPeriodStart < issueDate) {
+                periodStart = issueDate;
+                break;
+            }
+            
+            periodStart = newPeriodStart;
         }
-        // periodStart is now the last coupon date before or on today
 
         let periodEnd = new Date(periodStart);
         periodEnd.setMonth(periodEnd.getMonth() + (12/frequency));
@@ -215,7 +240,7 @@ export async function getNSSParameters(env) {
 
     // For creating yield curve graph
     const allTerms = values.flatMap(b => b.cashflows.map(c => c.term));
-    const maxMaturity = Math.max(...allTerms);
+    const maxMaturity = allTerms.length > 0 ? Math.max(...allTerms) : 30;
 
     const calculateErrors = calculateNSSErrors(values);
 
