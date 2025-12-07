@@ -298,7 +298,7 @@ export async function getYieldCurve(numPoints = 100, env) {
     const params = await getNSSParameters(env);
 
     // Generate curve points
-    const minMaturity = 0.01;
+    const minMaturity = 0.1;
     const maxMaturity = Math.max(...marketData.map(d => d.term));
     const step = maxMaturity / (numPoints - 1);
     
