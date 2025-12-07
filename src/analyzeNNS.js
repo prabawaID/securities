@@ -33,41 +33,40 @@ function nssCurve(tau, theta0, theta1, theta2, theta3, lambda1, lambda2) {
 }
 
 /**
- * Calculates the Sum of Squared Errors (SSE) between model and market yields.
+ * Calculates SSE between Market Price and Model Price (Discounted Cashflows)
  */
-const calculateNSSErrors = (values) => {
+const calculateNSSErrors = (bonds) => {
     return (X) => {
-        const theta0 = X[0];
-        const theta1 = X[1];
-        const theta2 = X[2];
-        const theta3 = X[3];
-        const lambda1 = X[4];
-        const lambda2 = X[5];
+        // Unpack parameters
+        const [theta0, theta1, theta2, theta3, lambda1, lambda2] = X;
 
-        // Constraint: Lambdas must be positive to ensure convergence
-        if (lambda1 <= 0.05 || lambda2 <= 0.05) {
-            return 1e9; // Penalty for invalid parameters
+        // Constraints: Lambdas must be positive
+        if (lambda1 <= 0.1 || lambda2 <= 0.1) return 1e9;
+
+        let totalError = 0;
+
+        // Loop through every bond in the market data
+        for (const bond of bonds) {
+            let modelPrice = 0;
+
+            // Discount every cashflow using the NSS Spot Rate for that specific time t
+            for (const cf of bond.cashflows) {
+                const t = cf.term;
+                
+                // Get Spot Rate (r) for this specific cashflow timing
+                // Note: nssCurve returns decimal rate (e.g. 0.045)
+                const r = nssCurve(t, theta0, theta1, theta2, theta3, lambda1, lambda2);
+
+                // Continuous Compounding Discounting: PV = CF * e^(-r*t)
+                modelPrice += cf.amount * Math.exp(-r * t);
+            }
+
+            // Optimization Goal: Minimize Squared Price Error
+            // Weighting: You might optionally weight by duration, but raw price error is standard
+            totalError += Math.pow(bond.price - modelPrice, 2);
         }
 
-        let runningError = 0;
-
-        for (let i = 0; i < values.length; i++) {
-            const t = values[i].term;
-            const marketYield = values[i].yield / 100;
-
-            const modelYield = nssCurve(
-                t,
-                theta0,
-                theta1,
-                theta2,
-                theta3,
-                lambda1,
-                lambda2);
-
-            runningError += Math.pow(marketYield - modelYield, 2);
-        }
-
-        return runningError;
+        return totalError;
     };
 };
 
@@ -77,7 +76,6 @@ const calculateNSSErrors = (values) => {
  * @returns {Promise<Array>} - Array of { term: number, yield: number }
  */
 export async function fetchMarketData(env) {
-    // 1. Fetch Raw Data
     const { results } = await env.DB.prepare(`
         SELECT 
             p.cusip, p.security_type, s.issueDate, s.maturityDate,
@@ -93,30 +91,22 @@ export async function fetchMarketData(env) {
     const today = new Date();
     const marketData = [];
 
-    // 2. Process Each Security
     for (const sec of results) {
         const issueDate = new Date(sec.issueDate);
         const maturity = new Date(sec.maturityDate);
         
+        // Skip invalid dates
         if (isNaN(maturity.getTime()) || isNaN(issueDate.getTime())) continue;
 
-        // A. Generate Cashflows & Pricing
+        // Generate Cashflows & Pricing
         const { cashflows, dirtyPrice } = generateCashflowsAndPrice(sec, today);
-        const termToMaturity = calculateTerm(today, maturity);
-
-        // B. Calculate Yield to Maturity
-        let ytm = null;
-        if (termToMaturity > 0.0) {
-            ytm = calculateYTM(cashflows, dirtyPrice);
-        }
-
-        // Return exactly the fields requested
-        if (ytm !== null) {
+        
+        // Only include bonds that are currently active (have future cashflows)
+        if (cashflows.length > 0) {
             marketData.push({
                 cusip: sec.cusip,
-                securityType: sec.security_type,
-                term: termToMaturity,
-                yield: ytm * 100 // return in percentage, convert it from decimal
+                price: dirtyPrice, // We fit to the Dirty Price (Clean + Accrued)
+                cashflows: cashflows // Array of { term, amount }
             });
         }
     }
@@ -256,32 +246,26 @@ export async function getNSSParameters(env) {
  * @returns {Promise<Object>} - The calculated spot rate and parameters used.
  */
 export async function calculateSpotRate(t, env) {
-    if (t < 0 || t > 30) {
-        throw new Error("Time T must be between 0 and 30 years.");
-    }
+    if (t < 0 || t > 30) throw new Error("Time T must be between 0 and 30 years.");
 
-    // Get fresh parameters
+    // 1. Get parameters (fitted using the new Price-based optimization)
     const params = await getNSSParameters(env);
 
-    const yieldDecimal = nssCurve(
+    // 2. Calculate Spot Rate
+    const spotDecimal = nssCurve(
         t,
         params.theta0,
         params.theta1,
         params.theta2,
         params.theta3,
         params.lambda1,
-        params.lambda2);
-
-    // Validate the rate to catch any calculation errors
-    if (!isFinite(yieldDecimal) || isNaN(yieldDecimal)) {
-        console.warn(`Invalid yield at maturity ${t}: ${yieldDecimal}`);
-    }
-
-    const ratePercent = yieldDecimal * 100;
+        params.lambda2
+    );
 
     return {
         t: t,
-        spotRate: ratePercent,
+        spotRate: spotDecimal * 100, // Convert to Percentage
+        type: "Zero-Coupon Spot Rate",
         parameters: params
     };
 }
@@ -291,45 +275,47 @@ export async function getYieldCurve(numPoints = 100, env) {
         throw new Error("Number of points must be between 0 and 100");
     }
 
-    const marketData = await fetchMarketData(env);
-
-    // Get fresh parameters
+    // 1. Fit Model to Prices (Expensive Operation - do once)
     const params = await getNSSParameters(env);
+    const bonds = await fetchMarketData(env); // fetch again just for max maturity bounds
 
-    // Generate curve points
-    const minMaturity = 0.5; // previously 0.01
-    const maxMaturity = Math.max(...marketData.map(d => d.term));
-    const step = maxMaturity / (numPoints - 1);
+    // 2. Define Curve Bounds
+    const minMaturity = 0.5;
+    // Find the longest bond to define the curve end
+    let maxMaturity = 30; 
+    if (bonds.length > 0) {
+        // Flatten cashflows to find max term
+        const allTerms = bonds.flatMap(b => b.cashflows.map(c => c.term));
+        maxMaturity = Math.max(...allTerms);
+    }
     
+    const step = maxMaturity / (numPoints - 1);
     const curve = [];
+
+    // 3. Generate Points using the fitted Spot parameters
     for (let i = 0; i < numPoints; i++) {
         const t = minMaturity + (i * step);
 
-        const yieldDecimal = nssCurve(
+        const spotDecimal = nssCurve(
             t,
             params.theta0,
             params.theta1,
             params.theta2,
             params.theta3,
             params.lambda1,
-            params.lambda2);
+            params.lambda2
+        );
 
-        // Validate the rate to catch any calculation errors
-        if (!isFinite(yieldDecimal) || isNaN(yieldDecimal)) {
-            console.warn(`Invalid yield at maturity ${t}: ${yieldDecimal}`);
-            // Skip invalid points rather than including nulls
-            continue;
-        }
- 
-        const ratePercent = yieldDecimal * 100;
+        if (!isFinite(spotDecimal)) continue;
 
         curve.push({
             maturity: t,
-            rate: ratePercent
+            rate: spotDecimal * 100 // Return as %
         });
     }
     
     return {
+        curveType: "Spot / Zero-Coupon",
         curve: curve,
         parameters: params
     };
