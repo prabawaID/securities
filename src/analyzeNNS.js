@@ -10,6 +10,12 @@ const THETA3_SEARCH_START =  0.01;  //  1% second hump
 const LAMBDA1_SEARCH_START = 1.50;
 const LAMBDA2_SEARCH_START = 3.00;
 
+
+function calculateTerm(referenceDate, targetDate) {
+    const diffTime = targetDate - referenceDate;
+    return diffTime / (1000 * 60 * 60 * 24 * 365.25);
+}
+
 /**
  * Nelson-Siegel-Svensson curve function
  */
@@ -215,6 +221,7 @@ async function fetchMarketData(env) {
             cleanPrice: cleanPrice,
             accruedInterest: accruedInterest,
             dirtyPrice: dirtyPrice,
+            yield: dirtyPrice,
             cashflows: cashflows
         });
     }
@@ -223,11 +230,6 @@ async function fetchMarketData(env) {
     issuances.sort((a, b) => a.term - b.term);
 
     return issuances;
-}
-
-function calculateTerm(referenceDate, targetDate) {
-    const diffTime = targetDate - referenceDate;
-    return diffTime / (1000 * 60 * 60 * 24 * 365.25);
 }
 
 /**
