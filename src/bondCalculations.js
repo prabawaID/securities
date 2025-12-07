@@ -469,6 +469,7 @@ export function generateCashflowsAndPrice(sec, referenceDate) {
     // Coupon-bearing securities (Notes & Bonds)
     const couponRateAnnual = parseFloat(sec.interestRate) / 100;
     const frequency = getPaymentFrequency(sec.interestPaymentFrequency);
+    const couponAmount = (couponRateAnnual * faceValue) / frequency;
     
     // Determine first payment date
     const firstPaymentDate = determineFirstPaymentDate(
@@ -477,34 +478,31 @@ export function generateCashflowsAndPrice(sec, referenceDate) {
         frequency
     );
     
-    // Generate coupon dates to find last and next coupon
-    const couponDates = generateCouponDates(maturity, firstPaymentDate, frequency, referenceDate);
-    const lastCouponDate = couponDates.lastCoupon;
-    const nextCouponDate = couponDates.nextCoupon;
+    const paymentDay = firstPaymentDate.getDate();
 
     // Generate all cashflows
     const cashflows = generateCouponCashflows({
         firstPaymentDate,
         maturity,
         referenceDate,
-        couponAmount: (couponRateAnnual * faceValue) / frequency,
+        couponAmount,
         faceValue,
         frequency
     });
 
-    // Calculate accrued interest using explicit coupon dates (consistent with calculatePricing)
-    const accruedCalc = calculateAccruedInterest({
-        lastCouponDate,
-        nextCouponDate,
+    // Calculate accrued interest
+    const accruedInterest = calculateAccruedInterestFromDates({
+        maturity,
         referenceDate,
-        couponRate: couponRateAnnual,
+        issueDate,
         frequency,
-        faceValue: 100
+        couponAmount,
+        paymentDay
     });
 
     return {
         cashflows,
-        dirtyPrice: cleanPrice + accruedCalc.accruedInterest
+        dirtyPrice: cleanPrice + accruedInterest
     };
 }
 
