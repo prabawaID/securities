@@ -45,6 +45,16 @@ export function subtractMonthsSafe(date, months, targetDay) {
 }
 
 /**
+ * Calculates the number of days between two dates
+ * @param {Date} startDate
+ * @param {Date} endDate
+ * @returns {number} - Days between dates
+ */
+export function daysBetween(startDate, endDate) {
+    return (endDate - startDate) / (1000 * 60 * 60 * 24);
+}
+
+/**
  * Calculates term in years between two dates
  * @param {Date} referenceDate
  * @param {Date} targetDate
@@ -98,14 +108,7 @@ export function subtractMonths(date, months) {
     return result;
 }
 
-
-/**
- * Calculates the number of days between two dates
- * @param {Date} startDate
- * @param {Date} endDate
- * @returns {number} - Days between dates
- */
-export function daysBetween(date1, date2) {
+export function daysBetween2(date1, date2) {
     if (!(date1 instanceof Date) || !(date2 instanceof Date)) {
         throw new Error('Both arguments must be Date objects');
     }
