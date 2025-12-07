@@ -225,7 +225,7 @@ export async function getNSSParameters(env) {
  * @param {Object} env - Worker environment.
  * @returns {Promise<Object>} - The calculated spot rate and parameters used.
  */
-export async function calculateSpotRate(t, params) {
+export async function getSpotRate(t, params) {
     if (t < 0 || t > 30) throw new Error("Time T must be between 0 and 30 years.");
 
     // Calculate Spot Rate based on given NSS parameters

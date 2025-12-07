@@ -1,5 +1,5 @@
 import { analyzeCusip } from './analyzeCusip.js';
-import { getNSSParameters, calculateSpotRate, getYieldCurve } from './analyzeNNS.js';
+import { getNSSParameters, getSpotRate, getYieldCurve } from './analyzeNNS.js';
 import { getChatbotHTML } from './chatUI.js';
 
 export default {
@@ -68,7 +68,7 @@ async function handleChat(request, env) {
             } else if (toolName === 'get_nss_parameters') {
                 toolResult = params;
             } else if (toolName === 'get_spot_rate') {
-                toolResult = await calculateSpotRate(
+                toolResult = await getSpotRate(
                     toolCall.arguments.years,
                     params
                 );
