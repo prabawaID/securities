@@ -256,7 +256,7 @@ export async function getYieldCurve(numPoints = 100, params, env) {
     const bonds = await fetchMarketData(env);
 
     // 2. Define Curve Bounds
-    const minMaturity = 0.1;
+    const minMaturity = 0.01;
     // Find the longest bond to define the curve end
     let maxMaturity = 30; 
     if (bonds.length > 0) {
