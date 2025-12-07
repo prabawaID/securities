@@ -191,6 +191,10 @@ function calculateTerm(referenceDate, targetDate) {
 export async function getNSSParameters(env) {
     const values = await fetchMarketData(env);
 
+    // For creating yield curve graph
+    const allTerms = values.flatMap(b => b.cashflows.map(c => c.term));
+    maxMaturity = Math.max(...allTerms);
+
     const calculateErrors = calculateNSSErrors(values);
 
     const result = nelderMead(calculateErrors, [
@@ -214,7 +218,8 @@ export async function getNSSParameters(env) {
         lambda2: result.x[5],
         squaredError: result.fx,
         iterations: result.iterations,
-        dataPoints: values.length
+        dataPoints: values.length,
+        maxMaturity: maxMaturity
     };
 }
 
@@ -252,18 +257,9 @@ export async function getYieldCurve(numPoints = 100, params, env) {
         throw new Error("Number of points must be between 0 and 100");
     }
 
-    // 1. fetch data again just for max maturity bounds
-    const bonds = await fetchMarketData(env);
-
     // 2. Define Curve Bounds
     const minMaturity = 0.01;
-    // Find the longest bond to define the curve end
-    let maxMaturity = 30; 
-    if (bonds.length > 0) {
-        // Flatten cashflows to find max term
-        const allTerms = bonds.flatMap(b => b.cashflows.map(c => c.term));
-        maxMaturity = Math.max(...allTerms);
-    }
+    const maxMaturity = params.maxMaturity;
     
     const step = maxMaturity / (numPoints - 1);
     const curve = [];
