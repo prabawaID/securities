@@ -15,7 +15,6 @@ const LAMBDA2_SEARCH_START = 3.00;
  */
 function nssCurve(tau, theta0, theta1, theta2, theta3, lambda1, lambda2) {
     // Safeguard: prevent division by zero
-    // If tau is 0 or very close to 0, use a small positive value
     if (tau < 0.0001) {
         tau = 0.0001;
     }
@@ -37,7 +36,6 @@ function nssCurve(tau, theta0, theta1, theta2, theta3, lambda1, lambda2) {
  */
 const calculateNSSErrors = (bonds) => {
     return (X) => {
-        // Unpack parameters
         const [theta0, theta1, theta2, theta3, lambda1, lambda2] = X;
 
         // Constraints: Lambdas must be positive
@@ -45,24 +43,15 @@ const calculateNSSErrors = (bonds) => {
 
         let totalError = 0;
 
-        // Loop through every bond in the market data
         for (const bond of bonds) {
             let modelPrice = 0;
 
-            // Discount every cashflow using the NSS Spot Rate for that specific time t
             for (const cf of bond.cashflows) {
                 const t = cf.term;
-                
-                // Get Spot Rate (r) for this specific cashflow timing
-                // Note: nssCurve returns decimal rate (e.g. 0.045)
                 const r = nssCurve(t, theta0, theta1, theta2, theta3, lambda1, lambda2);
-
-                // Continuous Compounding Discounting: PV = CF * e^(-r*t)
                 modelPrice += cf.amount * Math.exp(-r * t);
             }
 
-            // Optimization Goal: Minimize Squared Price Error
-            // Weighting: You might optionally weight by duration, but raw price error is standard
             totalError += Math.pow(bond.price - modelPrice, 2);
         }
 
@@ -70,10 +59,290 @@ const calculateNSSErrors = (bonds) => {
     };
 };
 
+// ============================================================================
+// DATE HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Adds months to a date, handling end-of-month edge cases
+ * @param {Date} date - Starting date
+ * @param {number} months - Number of months to add
+ * @param {number} targetDay - Target day of month (will clamp if month has fewer days)
+ * @returns {Date} - New date with months added
+ */
+function addMonthsSafe(date, months, targetDay) {
+    let newMonth = date.getMonth() + months;
+    let newYear = date.getFullYear();
+    
+    while (newMonth >= 12) {
+        newMonth -= 12;
+        newYear += 1;
+    }
+    
+    const lastDayOfMonth = new Date(newYear, newMonth + 1, 0).getDate();
+    return new Date(newYear, newMonth, Math.min(targetDay, lastDayOfMonth));
+}
+
+/**
+ * Subtracts months from a date, handling end-of-month edge cases
+ * @param {Date} date - Starting date
+ * @param {number} months - Number of months to subtract
+ * @param {number} targetDay - Target day of month (will clamp if month has fewer days)
+ * @returns {Date} - New date with months subtracted
+ */
+function subtractMonthsSafe(date, months, targetDay) {
+    let newMonth = date.getMonth() - months;
+    let newYear = date.getFullYear();
+    
+    while (newMonth < 0) {
+        newMonth += 12;
+        newYear -= 1;
+    }
+    
+    const lastDayOfMonth = new Date(newYear, newMonth + 1, 0).getDate();
+    return new Date(newYear, newMonth, Math.min(targetDay, lastDayOfMonth));
+}
+
+/**
+ * Calculates the number of days between two dates
+ * @param {Date} startDate
+ * @param {Date} endDate
+ * @returns {number} - Days between dates
+ */
+function daysBetween(startDate, endDate) {
+    return (endDate - startDate) / (1000 * 60 * 60 * 24);
+}
+
+/**
+ * Calculates term in years between two dates
+ * @param {Date} referenceDate
+ * @param {Date} targetDate
+ * @returns {number} - Years between dates
+ */
+function calculateTerm(referenceDate, targetDate) {
+    return daysBetween(referenceDate, targetDate) / 365.25;
+}
+
+// ============================================================================
+// CASHFLOW GENERATION FUNCTIONS
+// ============================================================================
+
+/**
+ * Generates cashflows for a zero-coupon security (T-Bills)
+ * @param {Date} maturity
+ * @param {Date} today
+ * @param {number} faceValue
+ * @returns {Array} - Array of cashflow objects
+ */
+function generateZeroCouponCashflows(maturity, today, faceValue) {
+    return [{
+        date: maturity,
+        term: calculateTerm(today, maturity),
+        amount: faceValue,
+        type: 'Principal'
+    }];
+}
+
+/**
+ * Determines the first coupon payment date
+ * @param {string|null} firstPaymentDateStr - Database field (could be null)
+ * @param {Date} issueDate
+ * @param {number} frequency - Annual payment frequency (1, 2, 4, 12)
+ * @returns {Date} - First payment date
+ */
+function determineFirstPaymentDate(firstPaymentDateStr, issueDate, frequency) {
+    let firstPaymentDate = new Date(firstPaymentDateStr);
+    
+    if (isNaN(firstPaymentDate.getTime())) {
+        // Fallback: estimate first payment as one period after issue
+        const issueDay = issueDate.getDate();
+        const monthsToAdd = 12 / frequency;
+        firstPaymentDate = addMonthsSafe(issueDate, monthsToAdd, issueDay);
+    }
+    
+    return firstPaymentDate;
+}
+
+/**
+ * Generates all future coupon cashflows and final principal payment
+ * @param {Object} params - Parameters object
+ * @returns {Array} - Array of cashflow objects
+ */
+function generateCouponCashflows({
+    firstPaymentDate,
+    maturity,
+    today,
+    couponAmount,
+    faceValue,
+    frequency
+}) {
+    const cashflows = [];
+    const paymentDay = firstPaymentDate.getDate();
+    const monthsToAdd = 12 / frequency;
+    let nextPaymentDate = new Date(firstPaymentDate);
+
+    // Generate all coupon payments before maturity
+    while (nextPaymentDate < maturity) {
+        if (nextPaymentDate > today) {
+            cashflows.push({
+                date: new Date(nextPaymentDate),
+                term: calculateTerm(today, nextPaymentDate),
+                amount: couponAmount,
+                type: 'Coupon'
+            });
+        }
+        
+        nextPaymentDate = addMonthsSafe(nextPaymentDate, monthsToAdd, paymentDay);
+    }
+
+    // Add final payment (principal + final coupon)
+    cashflows.push({
+        date: maturity,
+        term: calculateTerm(today, maturity),
+        amount: faceValue + couponAmount,
+        type: 'Principal + Coupon'
+    });
+
+    return cashflows;
+}
+
+// ============================================================================
+// ACCRUED INTEREST CALCULATION
+// ============================================================================
+
+/**
+ * Finds the last coupon payment date before today
+ * @param {Date} maturity
+ * @param {Date} today
+ * @param {Date} issueDate
+ * @param {number} frequency
+ * @param {number} paymentDay - Day of month for coupon payments
+ * @returns {Date} - Last coupon payment date (period start)
+ */
+function findLastCouponDate(maturity, today, issueDate, frequency, paymentDay) {
+    const monthsToSubtract = 12 / frequency;
+    let periodStart = new Date(maturity);
+
+    // Work backward from maturity to find the period containing today
+    while (periodStart > today) {
+        const newPeriodStart = subtractMonthsSafe(periodStart, monthsToSubtract, paymentDay);
+        
+        // Don't go before issue date
+        if (newPeriodStart < issueDate) {
+            return issueDate;
+        }
+        
+        periodStart = newPeriodStart;
+    }
+
+    return periodStart;
+}
+
+/**
+ * Calculates accrued interest for a coupon-bearing security
+ * @param {Object} params - Parameters object
+ * @returns {number} - Accrued interest amount
+ */
+function calculateAccruedInterest({
+    maturity,
+    today,
+    issueDate,
+    frequency,
+    couponAmount,
+    paymentDay
+}) {
+    const periodStart = findLastCouponDate(maturity, today, issueDate, frequency, paymentDay);
+    
+    // Calculate period end (next coupon date)
+    const monthsToAdd = 12 / frequency;
+    const periodEnd = addMonthsSafe(periodStart, monthsToAdd, paymentDay);
+
+    // Calculate accrued interest using Actual/Actual convention
+    const daysInPeriod = daysBetween(periodStart, periodEnd);
+    const daysAccrued = daysBetween(periodStart, today);
+
+    // Only calculate accrued if we're in a valid period
+    if (daysInPeriod > 0 && daysAccrued >= 0 && daysAccrued <= daysInPeriod) {
+        return couponAmount * (daysAccrued / daysInPeriod);
+    }
+
+    return 0;
+}
+
+// ============================================================================
+// MAIN FUNCTION
+// ============================================================================
+
+/**
+ * Generates cashflows and calculates dirty price for a security
+ * @param {Object} sec - Security data from database
+ * @param {Date} today - Reference date
+ * @returns {Object} - { cashflows, dirtyPrice }
+ */
+function generateCashflowsAndPrice(sec, today) {
+    const faceValue = 100;
+    const cleanPrice = parseFloat(sec.cleanPrice) || 0;
+    const maturity = new Date(sec.maturityDate);
+    const issueDate = new Date(sec.issueDate);
+    
+    // Zero-coupon securities (T-Bills)
+    if (sec.interestPaymentFrequency === 'None' || sec.interestRate == null) {
+        return {
+            cashflows: generateZeroCouponCashflows(maturity, today, faceValue),
+            dirtyPrice: cleanPrice  // No accrued interest for zero-coupon
+        };
+    }
+
+    // Coupon-bearing securities (Notes & Bonds)
+    const couponRateAnnual = parseFloat(sec.interestRate) / 100;
+    
+    // Determine payment frequency
+    let frequency = 2; // Default Semi-Annual
+    if (sec.interestPaymentFrequency === 'Annual') frequency = 1;
+    else if (sec.interestPaymentFrequency === 'Quarterly') frequency = 4;
+    else if (sec.interestPaymentFrequency === 'Monthly') frequency = 12;
+
+    const couponAmount = (couponRateAnnual * faceValue) / frequency;
+    
+    // Determine first payment date
+    const firstPaymentDate = determineFirstPaymentDate(
+        sec.firstInterestPaymentDate,
+        issueDate,
+        frequency
+    );
+    
+    const paymentDay = firstPaymentDate.getDate();
+
+    // Generate all cashflows
+    const cashflows = generateCouponCashflows({
+        firstPaymentDate,
+        maturity,
+        today,
+        couponAmount,
+        faceValue,
+        frequency
+    });
+
+    // Calculate accrued interest
+    const accruedInterest = calculateAccruedInterest({
+        maturity,
+        today,
+        issueDate,
+        frequency,
+        couponAmount,
+        paymentDay
+    });
+
+    return {
+        cashflows,
+        dirtyPrice: cleanPrice + accruedInterest
+    };
+}
+
 /**
  * Fetches security data from the DB and transforms it into yield curve terms.
  * @param {Object} env - The worker environment containing the DB binding.
- * @returns {Promise<Array>} - Array of { term: number, yield: number }
+ * @returns {Promise<Array>} - Array of bond data with cashflows and prices
  */
 export async function fetchMarketData(env) {
     const { results } = await env.DB.prepare(`
@@ -98,15 +367,14 @@ export async function fetchMarketData(env) {
         // Skip invalid dates
         if (isNaN(maturity.getTime()) || isNaN(issueDate.getTime())) continue;
 
-        // Generate Cashflows & Pricing
         const { cashflows, dirtyPrice } = generateCashflowsAndPrice(sec, today);
         
         // Only include bonds that are currently active (have future cashflows)
         if (cashflows.length > 0) {
             marketData.push({
                 cusip: sec.cusip,
-                price: dirtyPrice, // We fit to the Dirty Price (Clean + Accrued)
-                cashflows: cashflows // Array of { term, amount }
+                price: dirtyPrice,
+                cashflows: cashflows
             });
         }
     }
@@ -114,140 +382,9 @@ export async function fetchMarketData(env) {
     return marketData;
 }
 
-function generateCashflowsAndPrice(sec, today) {
-    const faceValue = 100;
-    const cleanPrice = parseFloat(sec.cleanPrice) || 0;
-    const maturity = new Date(sec.maturityDate);
-    const issueDate = new Date(sec.issueDate);
-    const cashflows = [];
-    let accruedInterest = 0;
-
-    // Bill / Zero Coupon
-    if (sec.interestPaymentFrequency === 'None' || sec.interestRate == null) {
-        cashflows.push({
-            date: maturity,
-            term: calculateTerm(today, maturity),
-            amount: faceValue,
-            type: 'Principal'
-        });
-    } 
-    // Note / Bond
-    else {
-        const couponRateAnnual = parseFloat(sec.interestRate) / 100;
-        let frequency = 2; // Default Semi-Annual
-        if (sec.interestPaymentFrequency === 'Annual') frequency = 1;
-        else if (sec.interestPaymentFrequency === 'Quarterly') frequency = 4;
-        else if (sec.interestPaymentFrequency === 'Monthly') frequency = 12;
-
-        const couponAmount = (couponRateAnnual * faceValue) / frequency;
-        
-        // Generate Stream
-        let nextPaymentDate = new Date(sec.firstInterestPaymentDate);
-        if (isNaN(nextPaymentDate.getTime())) {
-            const issueDay = issueDate.getDate();
-            let newMonth = issueDate.getMonth() + (12 / frequency);
-            let newYear = issueDate.getFullYear();
-            
-            while (newMonth >= 12) {
-                newMonth -= 12;
-                newYear += 1;
-            }
-            
-            const lastDay = new Date(newYear, newMonth + 1, 0).getDate();
-            nextPaymentDate = new Date(newYear, newMonth, Math.min(issueDay, lastDay));
-        }
-
-        const paymentDay = nextPaymentDate.getDate();
-        const monthsToAdd = 12 / frequency;
-
-        while (nextPaymentDate < maturity) {
-            if (nextPaymentDate > today) {
-                cashflows.push({
-                    date: new Date(nextPaymentDate),
-                    term: calculateTerm(today, nextPaymentDate),
-                    amount: couponAmount,
-                    type: 'Coupon'
-                });
-            }
-            
-            // Advance by the correct number of months
-            let newMonth = nextPaymentDate.getMonth() + monthsToAdd;
-            let newYear = nextPaymentDate.getFullYear();
-            
-            while (newMonth >= 12) {
-                newMonth -= 12;
-                newYear += 1;
-            }
-            
-            // Get last day of this month
-            let lastDay = new Date(newYear, newMonth + 1, 0).getDate();
-            // Use the smaller of paymentDay or lastDay
-            nextPaymentDate = new Date(newYear, newMonth, Math.min(paymentDay, lastDay));
-
-        }
-
-        cashflows.push({
-            date: maturity,
-            term: calculateTerm(today, maturity),
-            amount: faceValue + couponAmount,
-            type: 'Principal + Coupon'
-        });
-
-        // Calculate accrued interest by finding the last coupon payment date
-        let periodStart = new Date(maturity);
-        const periodDay = periodStart.getDate();
-        const monthsToSubtract = 12 / frequency;
-
-        // Work backward from maturity to find the period containing today
-        while (periodStart > today) {
-            let newMonth = periodStart.getMonth() - monthsToSubtract;
-            let newYear = periodStart.getFullYear();
-            
-            while (newMonth < 0) {
-                newMonth += 12;
-                newYear -= 1;
-            }
-            
-            let newPeriodStart = new Date(newYear, newMonth, Math.min(periodDay, new Date(newYear, newMonth + 1, 0).getDate()));
-    
-            // Don't go before issue date
-            if (newPeriodStart < issueDate) {
-                periodStart = issueDate;
-                break;
-            }
-            
-            periodStart = newPeriodStart;
-        }
-
-        let periodEnd;
-        {
-            let endMonth = periodStart.getMonth() + (12 / frequency);
-            let endYear = periodStart.getFullYear();
-            
-            while (endMonth >= 12) {
-                endMonth -= 12;
-                endYear += 1;
-            }
-            
-            const endLastDay = new Date(endYear, endMonth + 1, 0).getDate();
-            periodEnd = new Date(endYear, endMonth, Math.min(periodDay, endLastDay));
-        }
-
-        const daysInPeriod = (periodEnd - periodStart) / (1000 * 60 * 60 * 24);
-        const daysAccrued = (today - periodStart) / (1000 * 60 * 60 * 24);
-
-        // Only calculate accrued if we're in a valid period
-        if (daysInPeriod > 0 && daysAccrued >= 0 && daysAccrued <= daysInPeriod) {
-            accruedInterest = couponAmount * (daysAccrued / daysInPeriod);
-        }
-    }
-
-    return { cashflows, dirtyPrice: cleanPrice + accruedInterest };
-}
-
-function calculateTerm(referenceDate, targetDate) {
-    return (targetDate - referenceDate) / (1000 * 60 * 60 * 24 * 365.25);
-}
+// ============================================================================
+// NSS PARAMETER FITTING
+// ============================================================================
 
 /**
  * Calculates the initial NSS parameters by fitting the curve to DB data.
@@ -257,7 +394,7 @@ function calculateTerm(referenceDate, targetDate) {
 export async function getNSSParameters(env) {
     const values = await fetchMarketData(env);
 
-    // For creating yield curve graph
+    // Calculate max maturity for yield curve generation
     const allTerms = values.flatMap(b => b.cashflows.map(c => c.term));
     const maxMaturity = allTerms.length > 0 ? Math.max(...allTerms) : 30;
 
@@ -291,15 +428,13 @@ export async function getNSSParameters(env) {
 
 /**
  * Calculates the annualized spot rate for a specific time T.
- * Performs optimization first to ensure parameters are up to date with DB.
  * @param {number} t - Time in years.
- * @param {Object} env - Worker environment.
- * @returns {Promise<Object>} - The calculated spot rate and parameters used.
+ * @param {Object} params - NSS parameters
+ * @returns {Promise<Object>} - The calculated spot rate
  */
 export async function getSpotRate(t, params) {
     if (t < 0 || t > 30) throw new Error("Time T must be between 0 and 30 years.");
 
-    // Calculate Spot Rate based on given NSS parameters
     const spotDecimal = nssCurve(
         t,
         params.theta0,
@@ -312,25 +447,29 @@ export async function getSpotRate(t, params) {
 
     return {
         t: t,
-        spotRate: spotDecimal * 100, // Convert to Percentage
+        spotRate: spotDecimal * 100, // Convert to percentage
         type: "Zero-Coupon Spot Rate",
         parameters: params
     };
 }
 
+/**
+ * Generates yield curve data points
+ * @param {number} numPoints - Number of points to generate
+ * @param {Object} params - NSS parameters
+ * @param {Object} env - Worker environment
+ * @returns {Promise<Object>} - Yield curve data
+ */
 export async function getYieldCurve(numPoints = 100, params, env) {
     if (!Number.isInteger(numPoints) || numPoints < 2 || numPoints > 100) {
         throw new Error("Number of points must be an integer between 2 and 100");
     }
 
-    // 2. Define Curve Bounds
     const minMaturity = 0.01;
     const maxMaturity = params.maxMaturity;
-    
     const step = maxMaturity / (numPoints - 1);
     const curve = [];
 
-    // 3. Generate Points using the fitted Spot parameters
     for (let i = 0; i < numPoints; i++) {
         const t = minMaturity + (i * step);
 
@@ -348,7 +487,7 @@ export async function getYieldCurve(numPoints = 100, params, env) {
 
         curve.push({
             maturity: t,
-            rate: spotDecimal * 100 // Return as %
+            rate: spotDecimal * 100 // Convert to percentage
         });
     }
     
