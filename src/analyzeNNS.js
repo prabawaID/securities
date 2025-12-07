@@ -21,8 +21,8 @@ function nssCurve(tau, theta0, theta1, theta2, theta3, lambda1, lambda2) {
     }
     
     // Also ensure lambdas are not zero
-    if (lambda1 <= 0) lambda1 = 0.1;
-    if (lambda2 <= 0) lambda2 = 0.1;
+    if (lambda1 <= 0.1) lambda1 = 0.11;
+    if (lambda2 <= 0.1) lambda2 = 0.11;
 
     const term1 = theta0;
     const term2 = theta1 * ((1 - Math.exp(-tau/lambda1)) / (tau/lambda1));
@@ -118,6 +118,7 @@ function generateCashflowsAndPrice(sec, today) {
     const faceValue = 100;
     const cleanPrice = parseFloat(sec.cleanPrice) || 0;
     const maturity = new Date(sec.maturityDate);
+    const issueDate = new Date(sec.issueDate);
     const cashflows = [];
     let accruedInterest = 0;
 
@@ -143,7 +144,17 @@ function generateCashflowsAndPrice(sec, today) {
         // Generate Stream
         let nextPaymentDate = new Date(sec.firstInterestPaymentDate);
         if (isNaN(nextPaymentDate.getTime())) {
-            nextPaymentDate = new Date(new Date(sec.issueDate).setMonth(new Date(sec.issueDate).getMonth() + (12/frequency)));
+            const issueDay = issueDate.getDate();
+            let newMonth = issueDate.getMonth() + (12 / frequency);
+            let newYear = issueDate.getFullYear();
+            
+            while (newMonth >= 12) {
+                newMonth -= 12;
+                newYear += 1;
+            }
+            
+            const lastDay = new Date(newYear, newMonth + 1, 0).getDate();
+            nextPaymentDate = new Date(newYear, newMonth, Math.min(issueDay, lastDay));
         }
 
         const paymentDay = nextPaymentDate.getDate();
@@ -190,7 +201,6 @@ function generateCashflowsAndPrice(sec, today) {
         const monthsToSubtract = 12 / frequency;
 
         // Work backward from maturity to find the period containing today
-        const issueDate = new Date(sec.issueDate);
         while (periodStart > today) {
             let newMonth = periodStart.getMonth() - monthsToSubtract;
             let newYear = periodStart.getFullYear();
@@ -211,8 +221,19 @@ function generateCashflowsAndPrice(sec, today) {
             periodStart = newPeriodStart;
         }
 
-        let periodEnd = new Date(periodStart);
-        periodEnd.setMonth(periodEnd.getMonth() + (12/frequency));
+        let periodEnd;
+        {
+            let endMonth = periodStart.getMonth() + (12 / frequency);
+            let endYear = periodStart.getFullYear();
+            
+            while (endMonth >= 12) {
+                endMonth -= 12;
+                endYear += 1;
+            }
+            
+            const endLastDay = new Date(endYear, endMonth + 1, 0).getDate();
+            periodEnd = new Date(endYear, endMonth, Math.min(periodDay, endLastDay));
+        }
 
         const daysInPeriod = (periodEnd - periodStart) / (1000 * 60 * 60 * 24);
         const daysAccrued = (today - periodStart) / (1000 * 60 * 60 * 24);
