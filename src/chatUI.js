@@ -775,7 +775,7 @@ function getScript() {
                                 <div class="data-item"><label>Maturity</label><value>\${sec.maturity_date}</value></div>
                                 <div class="data-item"><label>Settlement</label><value>\${result.settlement_info.settlement_date}</value></div>
                                 <div class="data-item"><label>Issue Used</label><value>\${result.selected_issue.which}</value></div>
-                                <div class="data-item"><label>Accrual</label><value>\${calcs.days_accrued} / \${calcs.days_in_period}</value></div>
+                                <div class="data-item"><label>Accrual</label><value>\${calcs.days_accrued.toFixed(4)} / \${calcs.days_in_period}</value></div>
                             </div>
                         </div>
 
