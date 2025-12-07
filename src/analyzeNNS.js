@@ -77,54 +77,157 @@ const calculateNSSErrors = (values) => {
  * @returns {Promise<Array>} - Array of { term: number, yield: number }
  */
 async function fetchMarketData(env) {
-    // We assume the 'securities' table only contains bills, notes, and bonds.
+    // 1. Fetch all necessary columns, including pricing and dates for accrual calc
     const { results } = await env.DB.prepare(`
-        SELECT p.cusip, p.security_type, s.highYield, s.highInvestmentRate, s.maturityDate
-        FROM (
-            SELECT
-                *,
-                ROW_NUMBER() OVER (PARTITION BY cusip ORDER BY issueDate DESC) as rn
-            FROM securities
-        ) s, prices p
-        WHERE
-            s.cusip = p.cusip AND
-            rn = 1
+        SELECT 
+            p.cusip, 
+            p.security_type, 
+            s.issueDate, 
+            s.maturityDate,
+            s.interestRate,
+            s.interestPaymentFrequency,
+            s.firstInterestPaymentDate,
+            s.datedDate,
+            p.end_of_day as cleanPrice
+        FROM securities s
+        JOIN prices p ON s.cusip = p.cusip
+        ORDER BY s.issueDate DESC
     `).all();
 
     if (!results || results.length === 0) {
-        throw new Error("No security data available to build yield curve.");
+        throw new Error("No security data available.");
     }
 
     const today = new Date();
-    const marketData = [];
+    const issuances = [];
 
     for (const sec of results) {
+        const issueDate = new Date(sec.issueDate);
         const maturity = new Date(sec.maturityDate);
-        if (isNaN(maturity.getTime())) continue;
-
-        // Calculate time to maturity in years (ACT/365 approximation for curve fitting)
-        const diffTime = maturity - today;
-        const term = diffTime / (1000 * 60 * 60 * 24 * 365.25);
-
-        // Filter out expired or extremely short-term bonds if necessary
-        if (term < 0.000) continue;
-
-        // Ensure yield is a number (handle string inputs if DB returns strings)
-        let yieldVal;
         
-        if (sec.security_type == 'MARKET BASED BILL')
-            yieldVal = parseFloat(sec.highInvestmentRate);
-        else
-            yieldVal = parseFloat(sec.highYield);
+        if (isNaN(maturity.getTime()) || isNaN(issueDate.getTime())) continue;
 
-        if (isNaN(yieldVal)) continue;
+        const cashflows = [];
+        const faceValue = 100;
+        let accruedInterest = 0;
+        let cleanPrice = parseFloat(sec.cleanPrice) || 0;
 
-        marketData.push({ term: term, yield: yieldVal });
+        // --- Logic to Determine Cashflows and Accrued Interest ---
+
+        // A. Bills (Zero Coupon)
+        // Recognized by 'None' frequency or null interest rate
+        if (sec.interestPaymentFrequency === 'None' || sec.interestRate == null) {
+            cashflows.push({
+                date: maturity,
+                term: calculateTerm(today, maturity),
+                amount: faceValue,
+                type: 'Principal'
+            });
+            // Bills have no accrued interest; Dirty Price = Clean Price
+            accruedInterest = 0;
+        } 
+        
+        // B. Notes/Bonds (Coupon Bearing)
+        else {
+            const couponRateAnnual = parseFloat(sec.interestRate) / 100;
+            
+            // Map frequency string to number per year
+            let frequency = 2; // Default to Semi-Annual
+            if (sec.interestPaymentFrequency === 'Annual') frequency = 1;
+            else if (sec.interestPaymentFrequency === 'Quarterly') frequency = 4;
+            else if (sec.interestPaymentFrequency === 'Monthly') frequency = 12;
+
+            const couponAmount = (couponRateAnnual * faceValue) / frequency;
+            
+            // 1. Generate Cashflow Schedule
+            let nextPaymentDate = new Date(sec.firstInterestPaymentDate);
+            
+            // Fallback if first payment date is missing
+            if (isNaN(nextPaymentDate.getTime())) {
+                nextPaymentDate = new Date(issueDate);
+                nextPaymentDate.setMonth(nextPaymentDate.getMonth() + (12 / frequency));
+            }
+
+            // Loop to generate coupons
+            while (nextPaymentDate < maturity) {
+                cashflows.push({
+                    date: new Date(nextPaymentDate),
+                    term: calculateTerm(today, nextPaymentDate),
+                    amount: couponAmount,
+                    type: 'Coupon'
+                });
+                nextPaymentDate.setMonth(nextPaymentDate.getMonth() + (12 / frequency));
+            }
+
+            // Final Principal + Coupon
+            cashflows.push({
+                date: maturity,
+                term: calculateTerm(today, maturity),
+                amount: faceValue + couponAmount,
+                type: 'Principal + Coupon'
+            });
+
+            // 2. Calculate Accrued Interest
+            // We need the start and end of the *current* coupon period relative to 'today'
+            let datedDate = new Date(sec.datedDate);
+            if (isNaN(datedDate.getTime())) datedDate = issueDate;
+
+            let periodStart, periodEnd;
+
+            // Check if we are in the very first period (Long/Short first coupon)
+            const firstPayment = new Date(sec.firstInterestPaymentDate);
+            
+            if (today < firstPayment && !isNaN(firstPayment.getTime())) {
+                periodStart = datedDate;
+                periodEnd = firstPayment;
+            } else {
+                // Determine standard period windows looking backwards from maturity or forwards from first payment
+                // Simple approach: Walk forward from first payment until we pass today
+                let pointer = new Date(firstPayment);
+                if (isNaN(pointer.getTime())) pointer = new Date(datedDate);
+                
+                while (pointer <= today) {
+                    pointer.setMonth(pointer.getMonth() + (12 / frequency));
+                }
+                periodEnd = new Date(pointer);
+                periodStart = new Date(pointer);
+                periodStart.setMonth(periodStart.getMonth() - (12 / frequency));
+            }
+
+            // Calculate ratio
+            const daysInPeriod = (periodEnd - periodStart) / (1000 * 60 * 60 * 24);
+            const daysAccrued = (today - periodStart) / (1000 * 60 * 60 * 24);
+
+            // Guard against division by zero or future dates logic errors
+            if (daysInPeriod > 0 && daysAccrued > 0) {
+                accruedInterest = couponAmount * (daysAccrued / daysInPeriod);
+            }
+        }
+
+        const dirtyPrice = cleanPrice + accruedInterest;
+
+        issuances.push({
+            cusip: sec.cusip,
+            securityType: sec.security_type,
+            issueDate: issueDate,
+            maturityDate: maturity,
+            term: calculateTerm(today, maturity), // Term to maturity
+            cleanPrice: cleanPrice,
+            accruedInterest: accruedInterest,
+            dirtyPrice: dirtyPrice,
+            cashflows: cashflows
+        });
     }
 
     // Sort by term
-    marketData.sort((a, b) => a.term - b.term);
-    return marketData;
+    issuances.sort((a, b) => a.term - b.term);
+
+    return issuances;
+}
+
+function calculateTerm(referenceDate, targetDate) {
+    const diffTime = targetDate - referenceDate;
+    return diffTime / (1000 * 60 * 60 * 24 * 365.25);
 }
 
 /**
