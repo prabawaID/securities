@@ -1,4 +1,9 @@
-import { parseDate, formatDate, addMonths, subtractMonths, daysBetween, getNextBusinessDay, isBusinessDay } from './dateHelper.js';
+import { parseDate, formatDate, getNextBusinessDay, isBusinessDay } from './dateHelper.js';
+import { 
+    calculatePricing,
+    getPaymentFrequency,
+    getFrequencyName 
+} from './bondCalculations.js';
 
 /**
  * Analyzes a US Treasury security by CUSIP.
@@ -71,8 +76,25 @@ export async function analyzeCusip(cusip, settlementDateStr, issuePreference = '
             }
         }
 
-        // Calculate pricing using selected issue
-        const analysis = calculatePricing(price, selectedIssue, settlementDate);
+        // Prepare pricing parameters
+        const couponRate = parseFloat(price.rate || selectedIssue?.interestRate || 0);
+        const cleanPrice = parseFloat(selectedIssue?.pricePer100 || price.buy || 0);
+        const maturityDate = parseDate(price.maturity_date || selectedIssue?.maturityDate);
+        const firstCouponDate = selectedIssue?.firstInterestPaymentDate
+            ? parseDate(selectedIssue.firstInterestPaymentDate)
+            : null;
+        const frequency = getPaymentFrequency(selectedIssue?.interestPaymentFrequency);
+
+        // Calculate pricing using shared function
+        const analysis = calculatePricing({
+            cleanPrice: cleanPrice,
+            couponRate: couponRate / 100, // Convert to decimal
+            securityType: price.security_type,
+            maturityDate: maturityDate,
+            referenceDate: settlementDate,
+            firstCouponDate: firstCouponDate,
+            frequency: frequency
+        });
 
         return {
             success: true,
@@ -94,9 +116,9 @@ export async function analyzeCusip(cusip, settlementDateStr, issuePreference = '
             price_info: {
                 cusip: price.cusip,
                 security_type: price.security_type,
-                coupon_rate: parseFloat(price.rate || selectedIssue?.interestRate || 0),
+                coupon_rate: couponRate,
                 maturity_date: price.maturity_date || selectedIssue?.maturityDate,
-                clean_price: parseFloat(price.sell || selectedIssue?.priceper100 || 0),
+                clean_price: cleanPrice,
 
                 // From selected issue
                 issue_date: selectedIssue?.issueDate,
@@ -147,214 +169,4 @@ function validateCUSIP(cusip) {
     }
 
     return { valid: true };
-}
-
-function calculatePricing(price, issue, settlementDate) {
-    const couponRate = parseFloat(price.rate || issue?.interestRate || 0);
-    const cleanPrice = parseFloat(issue?.pricePer100 || price.buy || 0);
-
-    // For bills (zero coupon)
-    if (price.security_type === 'MARKET BASED BILL' || couponRate === 0) {
-        return {
-            clean_price: cleanPrice,
-            accrued_interest: 0,
-            dirty_price: cleanPrice,
-            f_offset: 0,
-            calculation_details: {
-                security_type: 'Bill (Zero Coupon)',
-                note: 'Bills have no coupon payments, so accrued interest is 0'
-            }
-        };
-    }
-
-    const frequency = getPaymentFrequency(issue?.interestPaymentFrequency);
-    const maturityDate = parseDate(price.maturity_date || issue?.maturityDate);
-    const firstCouponDate = issue?.firstInterestPaymentDate
-        ? parseDate(issue.firstInterestPaymentDate)
-        : null;
-
-    const couponDates = generateCouponDates(maturityDate, firstCouponDate, frequency, settlementDate);
-    const lastCouponDate = couponDates.lastCoupon;
-    const nextCouponDate = couponDates.nextCoupon;
-
-    const daysInPeriod = daysBetween(lastCouponDate, nextCouponDate);
-    const daysAccrued = daysBetween(lastCouponDate, settlementDate);
-    const f = daysAccrued / daysInPeriod;
-
-    const couponPayment = couponRate / frequency;
-    const accruedInterest = couponPayment * 100 * f;
-    const dirtyPrice = cleanPrice + accruedInterest;
-
-    return {
-        clean_price: roundTo(cleanPrice, 6),
-        accrued_interest: roundTo(accruedInterest, 6),
-        dirty_price: roundTo(dirtyPrice, 6),
-        f_offset: roundTo(f, 8),
-        calculation_details: {
-            coupon_rate_percent: roundTo(couponRate, 3),
-            payment_frequency: `${frequency}x per year (${getFrequencyName(frequency)})`,
-            coupon_payment_per_period: roundTo(couponPayment, 6),
-            last_coupon_date: formatDate(lastCouponDate),
-            next_coupon_date: formatDate(nextCouponDate),
-            days_in_period: daysInPeriod,
-            days_accrued: daysAccrued,
-            f_calculation: `${daysAccrued} days accrued ÷ ${daysInPeriod} days in period = ${roundTo(f, 8)}`,
-            accrued_interest_formula: `(${roundTo(couponRate, 3)}% / ${frequency}) × ${roundTo(f, 8)} = ${roundTo(accruedInterest, 6)}`,
-            day_count_convention: 'Actual/Actual (for US Treasuries)',
-            dirty_price_formula: `${roundTo(cleanPrice, 6)} + ${roundTo(accruedInterest, 6)} = ${roundTo(dirtyPrice, 6)}`
-        }
-    };
-}
-
-function generateCouponDates(maturityDate, firstCouponDate, frequency, settlementDate) {
-    /**
-     * Generate coupon dates for a Treasury security
-     * 
-     * @param {Date} maturityDate - Maturity date of the security
-     * @param {Date|null} firstCouponDate - First interest payment date (important for irregular periods)
-     * @param {number} frequency - Coupon frequency (1=annual, 2=semi-annual, 4=quarterly)
-     * @param {Date} settlementDate - Settlement date for the calculation
-     * @returns {Object} Object with lastCoupon, nextCoupon, and allCouponDates
-     */
-    if (!maturityDate || !(maturityDate instanceof Date)) {
-        throw new Error('Invalid maturity date');
-    }
-
-    const monthsPerPeriod = 12 / frequency;
-    const couponDates = [];
-    
-    // STRATEGY: Use firstCouponDate as anchor if available (handles irregular first periods)
-    // Otherwise, fall back to calculating backwards from maturity
-    
-    if (firstCouponDate && firstCouponDate instanceof Date && !isNaN(firstCouponDate.getTime())) {
-        // CASE 1: We have a valid first coupon date - use it as the anchor
-        // This properly handles irregular first periods (short or long)
-        
-        let currentDate = new Date(firstCouponDate);
-        
-        // Build forward from first coupon to maturity
-        while (currentDate <= maturityDate) {
-            couponDates.push(new Date(currentDate));
-            
-            // Check if we've reached maturity
-            if (currentDate.getTime() === maturityDate.getTime()) {
-                break;
-            }
-            
-            currentDate = addMonths(currentDate, monthsPerPeriod);
-            
-            // Safety check to prevent infinite loop
-            if (couponDates.length > 300) {
-                throw new Error('Too many coupon periods - check security data');
-            }
-        }
-        
-        // Ensure maturity date is in the list
-        if (couponDates[couponDates.length - 1].getTime() !== maturityDate.getTime()) {
-            couponDates.push(new Date(maturityDate));
-        }
-        
-        // If settlement is before the first coupon, we need to go backwards
-        // This handles the dated date period (from dated date to first coupon)
-        if (couponDates.length > 0 && settlementDate < couponDates[0]) {
-            // Calculate the quasi-coupon date before first coupon
-            // This represents the theoretical previous coupon (usually the dated date)
-            let priorDate = subtractMonths(new Date(firstCouponDate), monthsPerPeriod);
-            
-            // Only add if it's before settlement
-            while (priorDate < settlementDate && couponDates.length < 300) {
-                couponDates.unshift(new Date(priorDate));
-                priorDate = subtractMonths(priorDate, monthsPerPeriod);
-            }
-            
-            // Add one more to ensure we have a period containing settlement
-            if (priorDate < settlementDate) {
-                couponDates.unshift(new Date(priorDate));
-            }
-        }
-        
-    } else {
-        // CASE 2: No first coupon date - calculate backwards from maturity
-        // This is the fallback for when we don't have first coupon information
-        
-        couponDates.push(new Date(maturityDate));
-        let currentDate = new Date(maturityDate);
-        
-        // Generate dates going backwards
-        for (let i = 0; i < 300; i++) {
-            currentDate = subtractMonths(currentDate, monthsPerPeriod);
-            couponDates.unshift(new Date(currentDate));
-            
-            // Stop once we're well before the settlement date
-            if (currentDate < settlementDate) {
-                break;
-            }
-        }
-    }
-    
-    // Ensure we have at least 2 coupon dates
-    if (couponDates.length < 2) {
-        throw new Error('Unable to determine coupon period for settlement date');
-    }
-
-    // Find the coupon period that contains the settlement date
-    let lastCoupon = null;
-    let nextCoupon = null;
-    
-    for (let i = 0; i < couponDates.length - 1; i++) {
-        if (couponDates[i] <= settlementDate && couponDates[i + 1] > settlementDate) {
-            lastCoupon = couponDates[i];
-            nextCoupon = couponDates[i + 1];
-            break;
-        }
-    }
-    
-    // If we didn't find a period, settlement might be before all coupons or after maturity
-    if (!lastCoupon || !nextCoupon) {
-        if (settlementDate < couponDates[0]) {
-            throw new Error(`Settlement date ${formatDate(settlementDate)} is before first coupon ${formatDate(couponDates[0])}`);
-        } else if (settlementDate > couponDates[couponDates.length - 1]) {
-            throw new Error(`Settlement date ${formatDate(settlementDate)} is after maturity ${formatDate(maturityDate)}`);
-        } else {
-            throw new Error('Unable to find coupon period containing settlement date');
-        }
-    }
-    
-    // Additional validation
-    if (lastCoupon > settlementDate) {
-        throw new Error(`Last coupon ${formatDate(lastCoupon)} is after settlement ${formatDate(settlementDate)}`);
-    }
-    
-    if (nextCoupon <= settlementDate) {
-        throw new Error(`Next coupon ${formatDate(nextCoupon)} is not after settlement ${formatDate(settlementDate)}`);
-    }
-
-    return { 
-        lastCoupon, 
-        nextCoupon,
-        allCouponDates: couponDates,
-        // Additional metadata for debugging/validation
-        usedFirstCouponDate: !!(firstCouponDate && firstCouponDate instanceof Date && !isNaN(firstCouponDate.getTime())),
-        totalCouponDates: couponDates.length
-    };
-}
-
-function getPaymentFrequency(frequencyStr) {
-    if (!frequencyStr) return 2;
-    const lower = frequencyStr.toLowerCase();
-    if (lower.includes('annual') && !lower.includes('semi')) return 1;
-    if (lower.includes('semi')) return 2;
-    if (lower.includes('quarter')) return 4;
-    if (lower.includes('month')) return 12;
-    return 2;
-}
-
-function getFrequencyName(frequency) {
-    const names = { 1: 'Annual', 2: 'Semi-Annual', 4: 'Quarterly', 12: 'Monthly' };
-    return names[frequency] || 'Semi-Annual';
-}
-
-function roundTo(num, decimals) {
-    const multiplier = Math.pow(10, decimals);
-    return Math.round(num * multiplier) / multiplier;
 }

@@ -1,5 +1,6 @@
-import { addMonthsSafe, subtractMonthsSafe, daysBetween, calculateTerm } from './dateHelper.js';
+import { calculateTerm } from './dateHelper.js';
 import { nelderMead } from './nelderMead.js';
+import { generateCashflowsAndPrice } from './bondCalculations.js';
 
 /**
  * Starting guesses for the NSS parameters
@@ -61,220 +62,8 @@ const calculateNSSErrors = (bonds) => {
 };
 
 // ============================================================================
-// CASHFLOW GENERATION FUNCTIONS
-// ============================================================================
-
-/**
- * Generates cashflows for a zero-coupon security (T-Bills)
- * @param {Date} maturity
- * @param {Date} today
- * @param {number} faceValue
- * @returns {Array} - Array of cashflow objects
- */
-function generateZeroCouponCashflows(maturity, today, faceValue) {
-    return [{
-        date: maturity,
-        term: calculateTerm(today, maturity),
-        amount: faceValue,
-        type: 'Principal'
-    }];
-}
-
-/**
- * Determines the first coupon payment date
- * @param {string|null} firstPaymentDateStr - Database field (could be null)
- * @param {Date} issueDate
- * @param {number} frequency - Annual payment frequency (1, 2, 4, 12)
- * @returns {Date} - First payment date
- */
-function determineFirstPaymentDate(firstPaymentDateStr, issueDate, frequency) {
-    let firstPaymentDate = new Date(firstPaymentDateStr);
-    
-    if (isNaN(firstPaymentDate.getTime())) {
-        // Fallback: estimate first payment as one period after issue
-        const issueDay = issueDate.getDate();
-        const monthsToAdd = 12 / frequency;
-        firstPaymentDate = addMonthsSafe(issueDate, monthsToAdd, issueDay);
-    }
-    
-    return firstPaymentDate;
-}
-
-/**
- * Generates all future coupon cashflows and final principal payment
- * @param {Object} params - Parameters object
- * @returns {Array} - Array of cashflow objects
- */
-function generateCouponCashflows({
-    firstPaymentDate,
-    maturity,
-    today,
-    couponAmount,
-    faceValue,
-    frequency
-}) {
-    const cashflows = [];
-    const paymentDay = firstPaymentDate.getDate();
-    const monthsToAdd = 12 / frequency;
-    let nextPaymentDate = new Date(firstPaymentDate);
-
-    // Generate all coupon payments before maturity
-    while (nextPaymentDate < maturity) {
-        if (nextPaymentDate > today) {
-            cashflows.push({
-                date: new Date(nextPaymentDate),
-                term: calculateTerm(today, nextPaymentDate),
-                amount: couponAmount,
-                type: 'Coupon'
-            });
-        }
-        
-        nextPaymentDate = addMonthsSafe(nextPaymentDate, monthsToAdd, paymentDay);
-    }
-
-    // Add final payment (principal + final coupon)
-    cashflows.push({
-        date: maturity,
-        term: calculateTerm(today, maturity),
-        amount: faceValue + couponAmount,
-        type: 'Principal + Coupon'
-    });
-
-    return cashflows;
-}
-
-// ============================================================================
-// ACCRUED INTEREST CALCULATION
-// ============================================================================
-
-/**
- * Finds the last coupon payment date before today
- * @param {Date} maturity
- * @param {Date} today
- * @param {Date} issueDate
- * @param {number} frequency
- * @param {number} paymentDay - Day of month for coupon payments
- * @returns {Date} - Last coupon payment date (period start)
- */
-function findLastCouponDate(maturity, today, issueDate, frequency, paymentDay) {
-    const monthsToSubtract = 12 / frequency;
-    let periodStart = new Date(maturity);
-
-    // Work backward from maturity to find the period containing today
-    while (periodStart > today) {
-        const newPeriodStart = subtractMonthsSafe(periodStart, monthsToSubtract, paymentDay);
-        
-        // Don't go before issue date
-        if (newPeriodStart < issueDate) {
-            return issueDate;
-        }
-        
-        periodStart = newPeriodStart;
-    }
-
-    return periodStart;
-}
-
-/**
- * Calculates accrued interest for a coupon-bearing security
- * @param {Object} params - Parameters object
- * @returns {number} - Accrued interest amount
- */
-function calculateAccruedInterest({
-    maturity,
-    today,
-    issueDate,
-    frequency,
-    couponAmount,
-    paymentDay
-}) {
-    const periodStart = findLastCouponDate(maturity, today, issueDate, frequency, paymentDay);
-    
-    // Calculate period end (next coupon date)
-    const monthsToAdd = 12 / frequency;
-    const periodEnd = addMonthsSafe(periodStart, monthsToAdd, paymentDay);
-
-    // Calculate accrued interest using Actual/Actual convention
-    const daysInPeriod = daysBetween(periodStart, periodEnd);
-    const daysAccrued = daysBetween(periodStart, today);
-
-    // Only calculate accrued if we're in a valid period
-    if (daysInPeriod > 0 && daysAccrued >= 0 && daysAccrued <= daysInPeriod) {
-        return couponAmount * (daysAccrued / daysInPeriod);
-    }
-
-    return 0;
-}
-
-// ============================================================================
 // MAIN FUNCTION
 // ============================================================================
-
-/**
- * Generates cashflows and calculates dirty price for a security
- * @param {Object} sec - Security data from database
- * @param {Date} today - Reference date
- * @returns {Object} - { cashflows, dirtyPrice }
- */
-function generateCashflowsAndPrice(sec, today) {
-    const faceValue = 100;
-    const cleanPrice = parseFloat(sec.cleanPrice) || 0;
-    const maturity = new Date(sec.maturityDate);
-    const issueDate = new Date(sec.issueDate);
-    
-    // Zero-coupon securities (T-Bills)
-    if (sec.interestPaymentFrequency === 'None' || sec.interestRate == null) {
-        return {
-            cashflows: generateZeroCouponCashflows(maturity, today, faceValue),
-            dirtyPrice: cleanPrice  // No accrued interest for zero-coupon
-        };
-    }
-
-    // Coupon-bearing securities (Notes & Bonds)
-    const couponRateAnnual = parseFloat(sec.interestRate) / 100;
-    
-    // Determine payment frequency
-    let frequency = 2; // Default Semi-Annual
-    if (sec.interestPaymentFrequency === 'Annual') frequency = 1;
-    else if (sec.interestPaymentFrequency === 'Quarterly') frequency = 4;
-    else if (sec.interestPaymentFrequency === 'Monthly') frequency = 12;
-
-    const couponAmount = (couponRateAnnual * faceValue) / frequency;
-    
-    // Determine first payment date
-    const firstPaymentDate = determineFirstPaymentDate(
-        sec.firstInterestPaymentDate,
-        issueDate,
-        frequency
-    );
-    
-    const paymentDay = firstPaymentDate.getDate();
-
-    // Generate all cashflows
-    const cashflows = generateCouponCashflows({
-        firstPaymentDate,
-        maturity,
-        today,
-        couponAmount,
-        faceValue,
-        frequency
-    });
-
-    // Calculate accrued interest
-    const accruedInterest = calculateAccruedInterest({
-        maturity,
-        today,
-        issueDate,
-        frequency,
-        couponAmount,
-        paymentDay
-    });
-
-    return {
-        cashflows,
-        dirtyPrice: cleanPrice + accruedInterest
-    };
-}
 
 /**
  * Fetches security data from the DB and transforms it into yield curve terms.
@@ -304,6 +93,7 @@ export async function fetchMarketData(env) {
         // Skip invalid dates
         if (isNaN(maturity.getTime()) || isNaN(issueDate.getTime())) continue;
 
+        // Use shared function for cashflow generation and pricing
         const { cashflows, dirtyPrice } = generateCashflowsAndPrice(sec, today);
         
         // Only include bonds that are currently active (have future cashflows)
