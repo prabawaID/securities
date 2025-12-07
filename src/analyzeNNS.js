@@ -114,29 +114,6 @@ export async function fetchMarketData(env) {
     return marketData;
 }
 
-function calculateYTM(cashflows, currentPrice) {
-    if (currentPrice <= 0) return 0;
-    
-    // Objective: Minimize squared difference between PV and Price
-    const objective = (params) => {
-        const y = params[0]; 
-        let pv = 0;
-        for (const cf of cashflows) {
-            // Continuous compounding for solver speed: PV = CF * e^(-yt)
-            pv += cf.amount * Math.exp(-y * cf.term);
-        }
-        return Math.pow(pv - currentPrice, 2);
-    };
-
-    // Call imported Nelder-Mead
-    const result = nelderMead(objective, [0.05], { 
-        maxIterations: 100,
-        minErrorDelta: 1e-6 
-    });
-    
-    return result.x[0];
-}
-
 function generateCashflowsAndPrice(sec, today) {
     const faceValue = 100;
     const cleanPrice = parseFloat(sec.cleanPrice) || 0;
@@ -223,7 +200,10 @@ export async function getNSSParameters(env) {
         THETA3_SEARCH_START,
         LAMBDA1_SEARCH_START,
         LAMBDA2_SEARCH_START,
-    ]);
+    ], { 
+        maxIterations: 10000,
+        minErrorDelta: 1e-6 
+    });
 
     return {
         theta0: result.x[0],
@@ -276,7 +256,7 @@ export async function getYieldCurve(numPoints = 100, params, env) {
     const bonds = await fetchMarketData(env);
 
     // 2. Define Curve Bounds
-    const minMaturity = 0.5;
+    const minMaturity = 0.1;
     // Find the longest bond to define the curve end
     let maxMaturity = 30; 
     if (bonds.length > 0) {
