@@ -103,14 +103,14 @@ export async function fetchMarketData(env) {
         // A. Generate Cashflows & Pricing
         const { cashflows, dirtyPrice } = generateCashflowsAndPrice(sec, today);
 
-        // B. Calculate Yield to Maturity
+        // B. Calculate Term to Maturity
+        const termToMaturity = calculateTerm(today, maturity);
+
+        // C. Calculate Yield to Maturity
         let ytm = null;
         if (termToMaturity > 0.0) {
             ytm = calculateYTM(cashflows, dirtyPrice);
         }
-
-        // C. Calculate Term to Maturity
-        const termToMaturity = calculateTerm(today, maturity);
 
         if (ytm !== null) {
             marketData.push({
