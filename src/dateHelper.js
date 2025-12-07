@@ -58,7 +58,7 @@ export function daysBetween(date1, date2) {
     return Math.round((date2 - date1) / (24 * 60 * 60 * 1000));
 }
 
-function getNextBusinessDay(date) {
+export function getNextBusinessDay(date) {
     const next = new Date(date);
     next.setDate(next.getDate() + 1);
     while (!isBusinessDay(next)) next.setDate(next.getDate() + 1);
