@@ -146,6 +146,9 @@ function generateCashflowsAndPrice(sec, today) {
             nextPaymentDate = new Date(new Date(sec.issueDate).setMonth(new Date(sec.issueDate).getMonth() + (12/frequency)));
         }
 
+        const paymentDay = nextPaymentDate.getDate();
+        const monthsToAdd = 12 / frequency;
+
         while (nextPaymentDate < maturity) {
             if (nextPaymentDate > today) {
                 cashflows.push({
@@ -155,7 +158,17 @@ function generateCashflowsAndPrice(sec, today) {
                     type: 'Coupon'
                 });
             }
-            nextPaymentDate.setMonth(nextPaymentDate.getMonth() + (12 / frequency));
+            
+            // Advance by the correct number of months
+            let newMonth = nextPaymentDate.getMonth() + monthsToAdd;
+            let newYear = nextPaymentDate.getFullYear();
+            
+            while (newMonth >= 12) {
+                newMonth -= 12;
+                newYear += 1;
+            }
+            
+            nextPaymentDate = new Date(newYear, newMonth, paymentDay);
         }
 
         cashflows.push({
@@ -165,15 +178,24 @@ function generateCashflowsAndPrice(sec, today) {
             type: 'Principal + Coupon'
         });
 
-        // Accrued Interest (Simplified Actual/Actual window)
-        let periodStart = new Date(cashflows[0] ? cashflows[0].date : maturity);
-        while(periodStart > today) periodStart.setMonth(periodStart.getMonth() - (12/frequency));
-        const periodEnd = new Date(periodStart);
+        // Calculate accrued interest by finding the last coupon payment date
+        let periodStart = new Date(maturity);
+        // Work backward from maturity to find the period containing today
+        while (periodStart > today) {
+            periodStart.setMonth(periodStart.getMonth() - (12/frequency));
+        }
+        // periodStart is now the last coupon date before or on today
+
+        let periodEnd = new Date(periodStart);
         periodEnd.setMonth(periodEnd.getMonth() + (12/frequency));
 
         const daysInPeriod = (periodEnd - periodStart) / (1000 * 60 * 60 * 24);
         const daysAccrued = (today - periodStart) / (1000 * 60 * 60 * 24);
-        if (daysInPeriod > 0 && daysAccrued > 0) accruedInterest = couponAmount * (daysAccrued / daysInPeriod);
+
+        // Only calculate accrued if we're in a valid period
+        if (daysInPeriod > 0 && daysAccrued >= 0 && daysAccrued <= daysInPeriod) {
+            accruedInterest = couponAmount * (daysAccrued / daysInPeriod);
+        }
     }
 
     return { cashflows, dirtyPrice: cleanPrice + accruedInterest };
