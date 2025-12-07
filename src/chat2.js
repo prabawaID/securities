@@ -55,6 +55,9 @@ async function handleChat(request, env) {
             let toolResult;
             let toolName = toolCall.name;
 
+            // Get parameters (fitted using the new Price-based optimization)
+            const params = await getNSSParameters(env);
+
             if (toolName === 'analyze_cusip') {
                 toolResult = await analyzeCusip(
                     toolCall.arguments.cusip,
@@ -63,13 +66,11 @@ async function handleChat(request, env) {
                     env
                 );
             } else if (toolName === 'get_nss_parameters') {
-                toolResult = await getNSSParameters(
-                    env
-                );
+                toolResult = params;
             } else if (toolName === 'get_spot_rate') {
                 toolResult = await calculateSpotRate(
                     toolCall.arguments.years,
-                    env
+                    params
                 );
             }else if (toolName === 'get_yield_curve') {
                 toolResult = await getYieldCurve(

@@ -245,13 +245,10 @@ export async function getNSSParameters(env) {
  * @param {Object} env - Worker environment.
  * @returns {Promise<Object>} - The calculated spot rate and parameters used.
  */
-export async function calculateSpotRate(t, env) {
+export async function calculateSpotRate(t, params) {
     if (t < 0 || t > 30) throw new Error("Time T must be between 0 and 30 years.");
 
-    // 1. Get parameters (fitted using the new Price-based optimization)
-    const params = await getNSSParameters(env);
-
-    // 2. Calculate Spot Rate
+    // Calculate Spot Rate based on given NSS parameters
     const spotDecimal = nssCurve(
         t,
         params.theta0,
