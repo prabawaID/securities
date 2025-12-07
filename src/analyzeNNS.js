@@ -267,14 +267,13 @@ export async function calculateSpotRate(t, params) {
     };
 }
 
-export async function getYieldCurve(numPoints = 100, env) {
+export async function getYieldCurve(numPoints = 100, params) {
     if (numPoints < 0 || numPoints > 100) {
         throw new Error("Number of points must be between 0 and 100");
     }
 
-    // 1. Fit Model to Prices (Expensive Operation - do once)
-    const params = await getNSSParameters(env);
-    const bonds = await fetchMarketData(env); // fetch again just for max maturity bounds
+    // 1. fetch data again just for max maturity bounds
+    const bonds = await fetchMarketData(env);
 
     // 2. Define Curve Bounds
     const minMaturity = 0.5;
