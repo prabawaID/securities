@@ -117,7 +117,7 @@ export async function fetchMarketData(env) {
                 cusip: sec.cusip,
                 securityType: sec.security_type,
                 term: termToMaturity,
-                yield: ytm
+                yield: ytm * 100 // return in percentage, convert it from decimal
             });
         }
     }
