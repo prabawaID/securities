@@ -102,7 +102,6 @@ export async function fetchMarketData(env) {
 
         // A. Generate Cashflows & Pricing
         const { cashflows, dirtyPrice } = generateCashflowsAndPrice(sec, today);
-        const termToMaturity = calculateTerm(today, maturity);
 
         // B. Calculate Yield to Maturity
         let ytm = null;
@@ -110,7 +109,9 @@ export async function fetchMarketData(env) {
             ytm = calculateYTM(cashflows, dirtyPrice);
         }
 
-        // Return exactly the fields requested
+        // C. Calculate Term to Maturity
+        const termToMaturity = calculateTerm(today, maturity);
+
         if (ytm !== null) {
             marketData.push({
                 cusip: sec.cusip,
