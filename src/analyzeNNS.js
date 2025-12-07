@@ -82,8 +82,7 @@ export async function fetchMarketData(env) {
         SELECT 
             p.cusip, p.security_type, s.issueDate, s.maturityDate,
             s.interestRate, s.interestPaymentFrequency,
-            s.firstInterestPaymentDate, s.datedDate,
-            p.end_of_day as cleanPrice
+            s.firstInterestPaymentDate, p.end_of_day as cleanPrice
         FROM securities s
         JOIN prices p ON s.cusip = p.cusip
         ORDER BY s.issueDate DESC
