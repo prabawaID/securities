@@ -179,8 +179,6 @@ function generateCashflowsAndPrice(sec, today) {
                 newYear += 1;
             }
             
-            // Create date with day 1 first
-            let tempDate = new Date(newYear, newMonth, 1);
             // Get last day of this month
             let lastDay = new Date(newYear, newMonth + 1, 0).getDate();
             // Use the smaller of paymentDay or lastDay
@@ -321,8 +319,8 @@ export async function getSpotRate(t, params) {
 }
 
 export async function getYieldCurve(numPoints = 100, params, env) {
-    if (numPoints < 0 || numPoints > 100) {
-        throw new Error("Number of points must be between 0 and 100");
+    if (!Number.isInteger(numPoints) || numPoints < 2 || numPoints > 100) {
+        throw new Error("Number of points must be an integer between 2 and 100");
     }
 
     // 2. Define Curve Bounds
