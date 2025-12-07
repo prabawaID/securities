@@ -1,3 +1,4 @@
+import { addMonthsSafe, subtractMonthsSafe, daysBetween, calculateTerm } from './dateHelper.js';
 import { nelderMead } from './nelderMead.js';
 
 /**
@@ -58,70 +59,6 @@ const calculateNSSErrors = (bonds) => {
         return totalError;
     };
 };
-
-// ============================================================================
-// DATE HELPER FUNCTIONS
-// ============================================================================
-
-/**
- * Adds months to a date, handling end-of-month edge cases
- * @param {Date} date - Starting date
- * @param {number} months - Number of months to add
- * @param {number} targetDay - Target day of month (will clamp if month has fewer days)
- * @returns {Date} - New date with months added
- */
-function addMonthsSafe(date, months, targetDay) {
-    let newMonth = date.getMonth() + months;
-    let newYear = date.getFullYear();
-    
-    while (newMonth >= 12) {
-        newMonth -= 12;
-        newYear += 1;
-    }
-    
-    const lastDayOfMonth = new Date(newYear, newMonth + 1, 0).getDate();
-    return new Date(newYear, newMonth, Math.min(targetDay, lastDayOfMonth));
-}
-
-/**
- * Subtracts months from a date, handling end-of-month edge cases
- * @param {Date} date - Starting date
- * @param {number} months - Number of months to subtract
- * @param {number} targetDay - Target day of month (will clamp if month has fewer days)
- * @returns {Date} - New date with months subtracted
- */
-function subtractMonthsSafe(date, months, targetDay) {
-    let newMonth = date.getMonth() - months;
-    let newYear = date.getFullYear();
-    
-    while (newMonth < 0) {
-        newMonth += 12;
-        newYear -= 1;
-    }
-    
-    const lastDayOfMonth = new Date(newYear, newMonth + 1, 0).getDate();
-    return new Date(newYear, newMonth, Math.min(targetDay, lastDayOfMonth));
-}
-
-/**
- * Calculates the number of days between two dates
- * @param {Date} startDate
- * @param {Date} endDate
- * @returns {number} - Days between dates
- */
-function daysBetween(startDate, endDate) {
-    return (endDate - startDate) / (1000 * 60 * 60 * 24);
-}
-
-/**
- * Calculates term in years between two dates
- * @param {Date} referenceDate
- * @param {Date} targetDate
- * @returns {number} - Years between dates
- */
-function calculateTerm(referenceDate, targetDate) {
-    return daysBetween(referenceDate, targetDate) / 365.25;
-}
 
 // ============================================================================
 // CASHFLOW GENERATION FUNCTIONS

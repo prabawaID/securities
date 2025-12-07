@@ -1,3 +1,59 @@
+
+
+// ============================================================================
+// DATE HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Adds months to a date, handling end-of-month edge cases
+ * @param {Date} date - Starting date
+ * @param {number} months - Number of months to add
+ * @param {number} targetDay - Target day of month (will clamp if month has fewer days)
+ * @returns {Date} - New date with months added
+ */
+export function addMonthsSafe(date, months, targetDay) {
+    let newMonth = date.getMonth() + months;
+    let newYear = date.getFullYear();
+    
+    while (newMonth >= 12) {
+        newMonth -= 12;
+        newYear += 1;
+    }
+    
+    const lastDayOfMonth = new Date(newYear, newMonth + 1, 0).getDate();
+    return new Date(newYear, newMonth, Math.min(targetDay, lastDayOfMonth));
+}
+
+/**
+ * Subtracts months from a date, handling end-of-month edge cases
+ * @param {Date} date - Starting date
+ * @param {number} months - Number of months to subtract
+ * @param {number} targetDay - Target day of month (will clamp if month has fewer days)
+ * @returns {Date} - New date with months subtracted
+ */
+export function subtractMonthsSafe(date, months, targetDay) {
+    let newMonth = date.getMonth() - months;
+    let newYear = date.getFullYear();
+    
+    while (newMonth < 0) {
+        newMonth += 12;
+        newYear -= 1;
+    }
+    
+    const lastDayOfMonth = new Date(newYear, newMonth + 1, 0).getDate();
+    return new Date(newYear, newMonth, Math.min(targetDay, lastDayOfMonth));
+}
+
+/**
+ * Calculates term in years between two dates
+ * @param {Date} referenceDate
+ * @param {Date} targetDate
+ * @returns {number} - Years between dates
+ */
+export function calculateTerm(referenceDate, targetDate) {
+    return daysBetween(referenceDate, targetDate) / 365.25;
+}
+
 export function parseDate(dateStr) {
     if (!dateStr) return null;
     if (dateStr.includes('T')) return new Date(dateStr.split('T')[0]);
@@ -42,6 +98,13 @@ export function subtractMonths(date, months) {
     return result;
 }
 
+
+/**
+ * Calculates the number of days between two dates
+ * @param {Date} startDate
+ * @param {Date} endDate
+ * @returns {number} - Days between dates
+ */
 export function daysBetween(date1, date2) {
     if (!(date1 instanceof Date) || !(date2 instanceof Date)) {
         throw new Error('Both arguments must be Date objects');
