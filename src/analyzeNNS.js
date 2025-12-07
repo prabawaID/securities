@@ -461,7 +461,7 @@ export async function getSpotRate(t, params) {
  * @returns {Promise<Object>} - Yield curve data
  */
 export async function getYieldCurve(numPoints = 100, params, env) {
-    if (!Number.isInteger(numPoints) || numPoints < 2 || numPoints > 100) {
+    if (numPoints < 2 || numPoints > 100) {
         throw new Error("Number of points must be an integer between 2 and 100");
     }
 
