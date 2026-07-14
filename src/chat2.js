@@ -40,7 +40,7 @@ async function handleChat(request, env) {
             { role: 'user', content: message }
         ];
 
-        const response = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+        const response = await env.AI.run('@cf/meta/llama-3.2-1b-instruct', {
             messages,
             tools: [
                 getCusipAnalysisTool(),
