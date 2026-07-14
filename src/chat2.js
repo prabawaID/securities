@@ -95,7 +95,7 @@ async function handleChat(request, env) {
                     }
                 ];
 
-                const finalResponse = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+                const finalResponse = await env.AI.run('@cf/meta/llama-3.2-1b-instruct', {
                     messages: finalMessages
                 });
 
